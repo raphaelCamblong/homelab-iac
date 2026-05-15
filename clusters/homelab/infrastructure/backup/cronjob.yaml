@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-snapshot
+  namespace: cluster-backup
+spec:
+  schedule: "0 * * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: snapshot
+              # talosctl image tag should match cluster Talos version.
+              # Pinned v1.13.2 (matches Talos pin in cluster-bootstrap/terraform/variables.tf).
+              image: ghcr.io/siderolabs/talosctl:v1.13.2
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  export TALOSCONFIG=/secret/talosconfig
+                  talosctl etcd snapshot /backup/etcd-${TS}.db
+                  ls -la /backup/
+                  find /backup -name 'etcd-*.db' -mmin +1500 -delete || true
+              volumeMounts:
+                - { name: backup, mountPath: /backup }
+                - { name: talosconfig, mountPath: /secret, readOnly: true }
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: etcd-snapshots
+            - name: talosconfig
+              secret:
+                secretName: backup-talosconfig

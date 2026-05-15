@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etcd-snapshots
+  namespace: cluster-backup
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-truenas
+  resources:
+    requests:
+      storage: 50Gi
