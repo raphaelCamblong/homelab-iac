@@ -1,0 +1,18 @@
+# Longhorn chart 1.11.2 — pinned 2026-05-15.
+# Replicated block storage on each node's NVMe. Default StorageClass.
+defaultSettings:
+  defaultDataPath: /var/lib/longhorn
+  defaultReplicaCount: 3
+  storageOverProvisioningPercentage: 100
+  storageMinimalAvailablePercentage: 10
+  upgradeChecker: false
+  taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 3
+  reclaimPolicy: Retain
+csi:
+  attacherReplicaCount: 2
+  provisionerReplicaCount: 2
+  resizerReplicaCount: 2
+  snapshotterReplicaCount: 2
