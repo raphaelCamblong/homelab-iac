@@ -1,14 +1,36 @@
 # Controlplane patch applied to every CP node (we have 3, all CP+worker).
-# VIP gives us a single API endpoint across all 3 nodes without kube-vip.
+#
+# Multi-document format — Talos 1.13+ canonical. The legacy
+# machine.network.* fields are deprecated as of 1.13 per
+# pkg/machinery/config/types/v1alpha1/v1alpha1_types.go:
+#   "Deprecated: All fields within NetworkConfig are deprecated.
+#    Use multi-document network config types instead: HostnameConfig,
+#    NetworkDeviceConfig, ResolverConfig, StaticHostConfig, KubeSpanConfig."
+#
+# The hostname per node lives in cluster-bootstrap/talos/patches/node-cm5-N.yaml
+# (HostnameConfig document).
 machine:
   install:
     disk: /dev/nvme0n1
     wipe: false
-  network:
-    interfaces:
-      - interface: enX0
-        dhcp: true
-        vip:
-          ip: 192.168.1.140
 cluster:
   allowSchedulingOnControlPlanes: true
+---
+# Bring up the on-SoC NIC (Broadcom on Pi 5 / CM5).
+apiVersion: v1alpha1
+kind: LinkConfig
+name: end0
+up: true
+---
+apiVersion: v1alpha1
+kind: DHCPv4Config
+name: end0
+---
+# Talos manages the API VIP via gratuitous ARP on end0.
+# Used ONLY for the Kubernetes API endpoint — do NOT add this IP to
+# talosconfig.endpoints (it goes down when etcd does, blocking recovery).
+# talosconfig endpoints are the static node IPs set by terraform.
+apiVersion: v1alpha1
+kind: Layer2VIPConfig
+name: 192.168.1.140
+link: end0
