@@ -31,9 +31,11 @@ vmalert:
   enabled: true
   spec:
     evaluationInterval: 30s
-vmalertmanager:
+# Renamed from `vmalertmanager:` to `alertmanager:` in chart 0.78.
+alertmanager:
   enabled: true
   spec:
+    replicaCount: 1
     storage:
       accessModes: [ReadWriteOnce]
       storageClassName: longhorn

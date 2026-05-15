@@ -1,4 +1,5 @@
-# Loki chart 7.0.0 — pinned 2026-05-15. Single-binary mode on Longhorn.
+# loki chart 14.2.0 (grafana-community OSS fork) — pinned 2026-05-15.
+# Why community fork: grafana/loki 7.x is Grafana Enterprise Logs only since 2026-03-16.
 # Persistence: 5Gi × 3 Longhorn replicas = 15Gi NVMe. Bump if log volume warrants.
 deploymentMode: SingleBinary
 loki:
@@ -14,6 +15,13 @@ loki:
         index:
           prefix: index_
           period: 24h
+  # PLATFORM spec: 7-day log retention. Without these two, logs grow until the
+  # 5Gi PVC fills and Loki fails to write.
+  limits_config:
+    retention_period: 168h
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
 singleBinary:
   replicas: 1
   persistence:

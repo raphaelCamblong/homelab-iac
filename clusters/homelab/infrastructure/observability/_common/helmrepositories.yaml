@@ -16,3 +16,14 @@ metadata:
 spec:
   interval: 1h
   url: https://grafana.github.io/helm-charts
+---
+# OSS Loki moved out of grafana/ org in 2026-03 — charts now maintained at
+# grafana-community/. The original grafana/loki 7.x is GEL-only.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: grafana-community
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://grafana-community.github.io/helm-charts
