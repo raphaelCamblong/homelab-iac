@@ -1,0 +1,24 @@
+# HTTPRoute for the Longhorn UI. Service longhorn-frontend lives in
+# longhorn-system (managed by the Longhorn chart). Attached to the
+# Gateway in the gateway namespace.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: longhorn-ui
+  namespace: longhorn-system
+spec:
+  parentRefs:
+    - kind: Gateway
+      name: cilium
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - "longhorn.lab.<YOUR_DOMAIN>"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: longhorn-frontend
+          port: 80

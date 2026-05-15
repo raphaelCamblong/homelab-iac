@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: observability
 resources:
   - helmrelease.yaml
+  - httproute.yaml
   # admin-secret.sops.yaml is generated at action time — see README.md.
   - admin-secret.sops.yaml
 configMapGenerator:

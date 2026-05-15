@@ -1,0 +1,24 @@
+# HTTPRoute for Hubble UI. The hubble-ui Service lives in kube-system
+# (managed by the Cilium chart with hubble.ui.enabled=true). This route
+# attaches it to the Gateway in the gateway namespace.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+spec:
+  parentRefs:
+    - kind: Gateway
+      name: cilium
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - "hubble.lab.<YOUR_DOMAIN>"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: hubble-ui
+          port: 80

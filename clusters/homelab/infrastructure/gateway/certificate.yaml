@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-wildcard
+  namespace: gateway
+spec:
+  # cert-manager writes this Secret here; gateway.yaml references it.
+  secretName: lab-wildcard-tls
+  duration: 2160h    # 90d (Let's Encrypt max)
+  renewBefore: 360h  # 15d before expiry
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "lab.<YOUR_DOMAIN>"
+    - "*.lab.<YOUR_DOMAIN>"
