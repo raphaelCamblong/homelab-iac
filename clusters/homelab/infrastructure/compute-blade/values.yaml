@@ -1,0 +1,14 @@
+# compute-blade-agent v0.11.2 — pinned 2026-05-15.
+# DaemonSet that drives the Compute Blade's fan and LEDs (Talos has no userspace daemon).
+hostNetwork: true
+agent:
+  defaultFanSpeed: 30
+  ledIdle: GreenSolid
+  ledActivity: GreenPulse
+# Vestigial toleration — we set allowSchedulingOnControlPlanes: true, so CP nodes
+# carry no taint. Kept harmless for portability to future tainted-CP topologies.
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+nodeSelector: {}
