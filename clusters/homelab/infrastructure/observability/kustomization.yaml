@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: observability
+resources:
+  - namespace.yaml
+  - helmrepositories.yaml
+  - vm-stack.yaml
+  - loki.yaml
+  - alloy.yaml
+  - grafana.yaml
+configMapGenerator:
+  - name: vm-stack-values
+    namespace: observability
+    files:
+      - values.yaml=vm-stack-values.yaml
+  - name: loki-values
+    namespace: observability
+    files:
+      - values.yaml=loki-values.yaml
+  - name: alloy-values
+    namespace: observability
+    files:
+      - values.yaml=alloy-values.yaml
+  - name: grafana-values
+    namespace: observability
+    files:
+      - values.yaml=grafana-values.yaml
+generatorOptions:
+  disableNameSuffixHash: true

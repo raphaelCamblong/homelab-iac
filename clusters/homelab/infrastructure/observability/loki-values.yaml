@@ -1,0 +1,35 @@
+# Loki chart 7.0.0 — pinned 2026-05-15. Single-binary mode on Longhorn.
+# Persistence: 5Gi × 3 Longhorn replicas = 15Gi NVMe. Bump if log volume warrants.
+deploymentMode: SingleBinary
+loki:
+  auth_enabled: false
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: longhorn
+    size: 5Gi
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+test:
+  enabled: false
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false
