@@ -1,0 +1,14 @@
+# .sops.yaml
+# WARNING: replace AGE_PUBLIC_KEY_TODO_REPLACE_ME with the output of `age-keygen`
+# BEFORE encrypting any secret. The placeholder is grep-friendly on purpose so
+# `grep AGE_PUBLIC_KEY_TODO_REPLACE_ME` fails loudly if it's been forgotten.
+creation_rules:
+  - path_regex: clusters/.*/secrets/.*\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: AGE_PUBLIC_KEY_TODO_REPLACE_ME
+  - path_regex: clusters/.*/.*\.sops\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: AGE_PUBLIC_KEY_TODO_REPLACE_ME
+  - path_regex: cluster-bootstrap/.*\.sops\.yaml$
+    encrypted_regex: ^(cluster|secrets|trustdinfo|certs)$
+    age: AGE_PUBLIC_KEY_TODO_REPLACE_ME

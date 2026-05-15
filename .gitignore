@@ -1,0 +1,11 @@
+# Talos image artifacts (large binaries, regenerable from factory)
+*.raw
+*.raw.xz
+
+# Terraform state, plans, lock dir, and locally-rendered configs
+cluster-bootstrap/terraform/*.tfstate
+cluster-bootstrap/terraform/*.tfstate.backup
+cluster-bootstrap/terraform/*.tfplan
+cluster-bootstrap/terraform/.terraform/
+cluster-bootstrap/terraform/kubeconfig
+cluster-bootstrap/terraform/talosconfig
