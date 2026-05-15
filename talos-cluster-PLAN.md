@@ -1,0 +1,399 @@
+# Talos Cluster — Action Runbook
+
+This runbook covers only the **commands you run when you have physical access** to the 3 CM5 nodes and a tools-installed workstation. Every YAML / HCL file referenced has already been authored under `cluster-bootstrap/` and `clusters/homelab/` — see `git log -- cluster-bootstrap clusters` for the layout.
+
+Spec lives in [`talos-cluster-PLATFORM.md`](./talos-cluster-PLATFORM.md).
+
+---
+
+## Prerequisites checklist
+
+- [ ] Workstation has: `talosctl`, `kubectl`, `helm`, `flux`, `sops`, `age`, `terraform` (or `tofu`). Quick install on macOS:
+
+  ```bash
+  brew install siderolabs/talos/talosctl
+  brew install kubectl helm fluxcd/tap/flux sops age kubectx hashicorp/tap/terraform
+  ```
+
+- [ ] Router DHCP reservations for `192.168.1.51`, `.52`, `.53` (one per CM5 MAC).
+- [ ] `192.168.1.140` (API VIP) and `192.168.1.200`-`.220` (LB pool) **outside** the DHCP range.
+- [ ] DNS: `k8s.lan` resolves to `192.168.1.140` (router or Pi-hole).
+- [ ] TrueNAS at `192.168.1.25` exporting `/mnt/mega-tank/apps/k8s` with rw for the cluster IPs.
+- [ ] GitHub Personal Access Token with `repo` + `admin:public_key` scopes.
+- [ ] Main branch protection on this repo is **off** (or you're ready to bootstrap on a separate branch — see Step 8 notes).
+- [ ] Physical: 3× CM5 on Compute Blade + NVMe each, a USB-NVMe adapter / M.2 enclosure, network cabled.
+
+---
+
+## Step 1 — Workstation key + .sops.yaml finalize
+
+`.sops.yaml` ships with `AGE_PUBLIC_KEY_TODO_REPLACE_ME` placeholders. Fix those before encrypting anything.
+
+```bash
+mkdir -p ~/.config/sops/age
+age-keygen -o ~/.config/sops/age/keys.txt
+
+AGE_PUB=$(grep "public key:" ~/.config/sops/age/keys.txt | awk '{print $4}')
+echo "Public key: $AGE_PUB"
+
+# Replace the three placeholders in .sops.yaml
+sed -i.bak "s|AGE_PUBLIC_KEY_TODO_REPLACE_ME|$AGE_PUB|g" .sops.yaml
+rm .sops.yaml.bak
+
+git add .sops.yaml
+git commit -m "chore: set age public key in sops creation_rules"
+```
+
+**Back up the age private key now** to a password manager AND a paper copy. Losing it = unrecoverable secrets + unrebuildable cluster.
+
+---
+
+## Step 2 — Mint the Talos factory image
+
+```bash
+# Submit schematic, capture ID
+SCHEMATIC_ID=$(curl -s -X POST --data-binary @cluster-bootstrap/talos/schematic.yaml \
+  https://factory.talos.dev/schematics | jq -r .id)
+echo "Schematic ID: $SCHEMATIC_ID"
+
+TALOS_VERSION=v1.13.2   # latest stable as of 2026-05-15 — bump only if needed
+IMAGE_URL="https://factory.talos.dev/image/${SCHEMATIC_ID}/${TALOS_VERSION}/metal-arm64.raw.xz"
+
+# Verify the URL responds
+curl -sI "$IMAGE_URL" | head -1   # expect HTTP/2 200
+
+# Annotate schematic with the ID (so future re-rolls are traceable)
+sed -i.bak "1i\\
+# Schematic ID: $SCHEMATIC_ID\\
+# Image URL: $IMAGE_URL\\
+" cluster-bootstrap/talos/schematic.yaml
+rm cluster-bootstrap/talos/schematic.yaml.bak
+
+git add cluster-bootstrap/talos/schematic.yaml
+git commit -m "chore: record talos factory schematic ID"
+
+# Download + decompress for flashing (.raw is gitignored)
+curl -L -o cluster-bootstrap/talos/metal-arm64.raw.xz "$IMAGE_URL"
+xz -d -k cluster-bootstrap/talos/metal-arm64.raw.xz
+```
+
+---
+
+## Step 3 — Flash and boot each node
+
+For each CM5 (target IPs `.51`, `.52`, `.53`):
+
+1. Power down, remove NVMe, plug into USB-NVMe adapter.
+2. `diskutil list` to find the right `/dev/diskN` (DO NOT mix this up with the Mac disk).
+3. `diskutil unmountDisk /dev/diskN`
+4. `sudo dd if=cluster-bootstrap/talos/metal-arm64.raw of=/dev/rdiskN bs=4m status=progress && sync`
+5. `sudo diskutil eject /dev/diskN`
+6. Reseat NVMe, power on the CM5.
+7. After ~30s: `talosctl --nodes <ip> disks --insecure` — must list `/dev/nvme0n1`. Repeat with a DHCP fix if the node didn't get the static lease.
+
+Sanity-check all 3:
+
+```bash
+for ip in 192.168.1.51 192.168.1.52 192.168.1.53; do
+  echo "=== $ip ==="
+  talosctl --nodes "$ip" disks --insecure | head -3
+done
+```
+
+---
+
+## Step 4 — Generate the Talos cluster identity (SOPS-encrypted)
+
+```bash
+talosctl gen secrets -o /tmp/talos-secrets.yaml
+
+sops --encrypt --input-type yaml --output-type yaml /tmp/talos-secrets.yaml \
+  > cluster-bootstrap/talos/secrets.sops.yaml
+rm /tmp/talos-secrets.yaml
+
+grep -q "ENC\[AES256_GCM" cluster-bootstrap/talos/secrets.sops.yaml && echo encrypted
+
+git add cluster-bootstrap/talos/secrets.sops.yaml
+git commit -m "feat: SOPS-encrypted Talos cluster secrets bundle"
+```
+
+---
+
+## Step 5 — Vendor the Gateway API CRDs
+
+Flux can't source raw GitHub release URLs, so the CRDs are vendored at action time:
+
+```bash
+bash clusters/homelab/infrastructure/gateway-api-crds/.fetch.sh
+ls -la clusters/homelab/infrastructure/gateway-api-crds/standard-install.yaml
+
+git add clusters/homelab/infrastructure/gateway-api-crds/standard-install.yaml
+git commit -m "feat: vendor gateway-api standard CRDs"
+```
+
+---
+
+## Step 6 — Terraform apply cycle 1: controlplane + etcd bootstrap
+
+```bash
+cd cluster-bootstrap/terraform
+terraform init
+terraform plan -out=cp.tfplan
+# Expect ~6 resources: sops_file data + talos_machine_configuration data
+# + 3× talos_machine_configuration_apply + talos_machine_bootstrap
+# + 2 local_sensitive_file (kubeconfig + talosconfig)
+terraform apply cp.tfplan
+
+export KUBECONFIG=$(terraform output -raw kubeconfig_path)
+export TALOSCONFIG=$(terraform output -raw talosconfig_path)
+
+talosctl etcd members   # expect 3 members
+kubectl get nodes       # expect 3 nodes NotReady (no CNI yet — correct)
+cd ../..
+```
+
+---
+
+## Step 7 — Generate the backup talosconfig (role-limited)
+
+The etcd-snapshot CronJob runs with a talosconfig scoped to `os:etcd:backup` only (not full admin):
+
+```bash
+talosctl config new --roles os:etcd:backup --crt-ttl 8760h /tmp/backup-talosconfig
+
+B64=$(base64 -i /tmp/backup-talosconfig)
+cat > clusters/homelab/infrastructure/backup/talos-secret.yaml <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backup-talosconfig
+  namespace: cluster-backup
+type: Opaque
+data:
+  talosconfig: $B64
+EOF
+
+sops --encrypt --in-place clusters/homelab/infrastructure/backup/talos-secret.yaml
+mv clusters/homelab/infrastructure/backup/talos-secret.yaml \
+   clusters/homelab/infrastructure/backup/talos-secret.sops.yaml
+rm /tmp/backup-talosconfig
+
+grep -q "ENC\[AES256_GCM" clusters/homelab/infrastructure/backup/talos-secret.sops.yaml && echo encrypted
+
+git add clusters/homelab/infrastructure/backup/talos-secret.sops.yaml
+git commit -m "feat(backup): SOPS-encrypted talosconfig for etcd snapshots"
+git push origin main
+```
+
+---
+
+## Step 8 — Terraform apply cycle 2: Flux bootstrap
+
+⚠ **Branch protection check first.** `flux_bootstrap_git` pushes a commit to `var.github_branch` (default `main`). If protection requires PR review or signed commits, the deploy-key push **will fail**. Options:
+- (a) Disable protection for the bootstrap, re-enable after. Simplest for a personal repo.
+- (b) `export TF_VAR_github_branch=flux-bootstrap` and merge into main afterward.
+- (c) Add the `flux-homelab` deploy key to the bypass list (paid GitHub only).
+
+```bash
+export TF_VAR_github_owner=<your-github-username>
+export TF_VAR_github_token=<your-pat>
+
+cd cluster-bootstrap/terraform
+terraform plan -out=flux.tfplan
+# Expect 5 resources: kubernetes_namespace + kubernetes_secret + tls_private_key
+# + github_repository_deploy_key + flux_bootstrap_git
+terraform apply flux.tfplan
+cd ../..
+
+# Pull Flux's auto-commit (it writes flux-system/{gotk-components,gotk-sync,kustomization}.yaml)
+git pull --rebase origin main
+```
+
+If `flux_bootstrap_git` errors with `422 key with that title already exists`, the deploy key was created in a prior run but TF doesn't track it. Recover:
+
+```bash
+KEY_ID=$(gh api "repos/$TF_VAR_github_owner/homelab-iac/keys" \
+  --jq '.[] | select(.title=="flux-homelab") | .id')
+cd cluster-bootstrap/terraform
+terraform import github_repository_deploy_key.flux "homelab-iac:$KEY_ID"
+terraform apply
+```
+
+---
+
+## Step 9 — Watch reconciliation roll through the dependency graph
+
+```bash
+kubectl get kustomizations.kustomize.toolkit.fluxcd.io -A -w
+# Second terminal: flux events --watch -A
+```
+
+Expected order (approximate timings):
+
+| # | Kustomization      | Ready after | Notes |
+| - | ------------------ | ----------- | --- |
+| 1 | `flux-system`      | ~30s        | Flux managing itself |
+| 2 | `gateway-api-crds` | ~30s        | CRDs only |
+| 3 | `cilium`           | ~3 min      | Once Ready, nodes go Ready |
+| 4 | `longhorn`         | ~5 min      | depends on cilium |
+| 4 | `csi-driver-nfs`   | ~3 min      | parallel with longhorn |
+| 5 | `compute-blade`    | ~2 min      | parallel after cilium |
+| 5 | `headlamp`         | ~2 min      | parallel after cilium |
+| 6 | `observability`    | ~5 min      | depends on longhorn |
+| 7 | `backup`           | ~2 min      | depends on csi-driver-nfs |
+
+Total: ~10–15 minutes. When everything settles:
+
+```bash
+flux get kustomizations -A     # every row READY=True
+flux get helmreleases -A       # every row READY=True
+kubectl get nodes              # all 3 Ready
+```
+
+---
+
+## Step 10 — End-to-end smoke
+
+```bash
+kubectl get storageclass   # longhorn (default) + nfs-truenas
+
+kubectl apply -f - <<'EOF'
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: smoke-longhorn, namespace: default }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: smoke-nfs, namespace: default }
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-truenas
+  resources: { requests: { storage: 1Gi } }
+EOF
+kubectl get pvc -n default -w   # both Bound within 30s, then ^C
+kubectl delete pvc smoke-longhorn smoke-nfs -n default
+
+# LoadBalancer smoke
+kubectl create deployment smoke --image=nginx:alpine
+kubectl expose deployment smoke --port=80 --type=LoadBalancer
+SMOKE_IP=$(kubectl get svc smoke -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+curl -s -o /dev/null -w "%{http_code}\n" "http://$SMOKE_IP"   # 200
+kubectl delete deployment smoke svc/smoke
+
+# Gateway API
+kubectl get gatewayclass   # cilium present
+
+# Grafana
+open http://192.168.1.201   # default admin/admin, change immediately
+
+# Headlamp + Flux plugin
+open http://192.168.1.202
+kubectl -n headlamp create token headlamp --duration=24h   # paste into UI
+# In UI: Settings → Plugin Catalog → search "flux" → Install
+kubectl -n headlamp rollout restart deploy/headlamp
+
+# Hubble
+kubectl -n kube-system port-forward svc/hubble-ui 12000:80   # open http://localhost:12000
+
+# Trigger one etcd snapshot manually
+kubectl -n cluster-backup create job --from=cronjob/etcd-snapshot etcd-snapshot-manual
+kubectl -n cluster-backup wait --for=condition=complete job/etcd-snapshot-manual --timeout=2m
+kubectl -n cluster-backup logs job/etcd-snapshot-manual   # expect "etcd-...db" written
+```
+
+---
+
+## Step 11 — CLUSTER.md cheat sheet
+
+Write `CLUSTER.md` at the repo root once the values are verified:
+
+```markdown
+# Cluster Access — homelab
+
+| What | Where |
+| --- | --- |
+| Kubernetes API VIP | https://192.168.1.140:6443 |
+| Grafana | http://192.168.1.201 |
+| Headlamp | http://192.168.1.202 (token: `kubectl -n headlamp create token headlamp`) |
+| Hubble UI | `kubectl -n kube-system port-forward svc/hubble-ui 12000:80` |
+| Longhorn UI | `kubectl -n longhorn-system port-forward svc/longhorn-frontend 8080:80` |
+| talosctl | `export TALOSCONFIG=$(cd cluster-bootstrap/terraform && terraform output -raw talosconfig_path)` |
+| kubectl | `export KUBECONFIG=$(cd cluster-bootstrap/terraform && terraform output -raw kubeconfig_path)` |
+| etcd snapshot recovery | `talosctl etcd recover --from /path/to/snapshot.db && talosctl bootstrap` |
+| Flux reconcile now | `flux reconcile kustomization flux-system --with-source` |
+| Force re-pull of a HelmRelease | `flux suspend hr <name> -n <ns> && flux resume hr <name> -n <ns>` |
+```
+
+```bash
+git add CLUSTER.md && git commit -m "docs: cluster access cheat sheet" && git push
+```
+
+---
+
+## Component versions (pinned 2026-05-15)
+
+These are the resolved versions baked into the manifests in this repo. Bump in follow-up PRs after the initial cluster is healthy.
+
+| Component | Version | Source |
+| --- | --- | --- |
+| Talos | v1.13.2 | factory.talos.dev / siderolabs/talos releases |
+| Kubernetes | 1.36.0 | bundled with Talos v1.13.2 |
+| Cilium chart | 1.19.4 | helm.cilium.io |
+| Longhorn chart | 1.11.2 | charts.longhorn.io |
+| csi-driver-nfs chart | v4.13.2 | kubernetes-csi/csi-driver-nfs |
+| Gateway API | v1.5.1 | kubernetes-sigs/gateway-api releases |
+| VM-k8s-stack chart | 0.78.0 | victoriametrics helm-charts |
+| Loki chart | 7.0.0 | grafana helm-charts |
+| Alloy chart | 1.8.1 | grafana helm-charts |
+| Grafana chart | 10.5.15 | grafana helm-charts |
+| Headlamp chart | 0.42.0 | headlamp-k8s helm |
+| compute-blade-agent | v0.11.2 | ghcr.io/uptime-industries |
+| terraform-provider-talos | ~> 0.11 (0.11.0) | siderolabs |
+| terraform-provider-flux | ~> 1.8 (1.8.7) | fluxcd |
+| terraform-provider-kubernetes | ~> 3.1 (3.1.0) | hashicorp — note major bump from 2.x |
+| terraform-provider-github | ~> 6.12 (6.12.1) | integrations |
+| terraform-provider-tls | ~> 4.3 (4.3.0) | hashicorp |
+| terraform-provider-local | ~> 2.9 (2.9.0) | hashicorp |
+| terraform-provider-sops | ~> 1.4 (1.4.1) | carlpett |
+
+---
+
+## Notes for the operator
+
+1. **Boundary discipline matters.** Terraform owns the one-shot lifecycle (config apply, etcd bootstrap, Flux install, GitHub deploy key, in-cluster `sops-age` Secret). Flux owns everything continuously reconciled from git. **Do not `helm install` anything after Step 8** — if it isn't in git, it doesn't exist.
+2. **Cluster identity (Talos CA / etcd certs) lives in git**, SOPS-encrypted at `cluster-bootstrap/talos/secrets.sops.yaml`. Terraform reads it via `data.sops_file`. Lose the workstation, lose TF state — no problem; re-clone, decrypt with age key, `terraform apply` rebuilds against the same nodes. **The age private key is the single most critical secret.**
+3. **Reconciliation order is enforced by `dependsOn`** at the top-level Flux Kustomization level. Graph: `gateway-api-crds → cilium → {longhorn, csi-driver-nfs, compute-blade, headlamp}; longhorn → observability; csi-driver-nfs → backup`.
+4. **All in-git secrets are SOPS-encrypted.** Filenames end in `.sops.yaml`. Decryption happens in-cluster via the `sops-age` Secret in `flux-system` (created by Terraform from your local age key file).
+5. **`talosctl` privileges are sensitive.** The backup CronJob's talosconfig has `os:etcd:backup` role only, not full admin.
+6. **`KUBECONFIG=~/.kube/configs/homelab`** is the cluster's admin config. Regenerable from `terraform apply` since the underlying secrets are in git — no separate backup needed.
+7. **To rebuild from scratch:** flash 3 fresh CM5s, `terraform apply` in `cluster-bootstrap/terraform/` (same secrets bundle → same cluster CA → nodes trust the new control plane), restore etcd snapshot if needed, Flux re-reconciles everything from git.
+
+---
+
+## Optional follow-ups (intentionally deferred)
+
+Add when the need is real, not now.
+
+- **Flux image-automation** (`image-reflector-controller` + `image-automation-controller`) — re-enable in `cluster-bootstrap/terraform/flux.tf` `flux_bootstrap_git.components_extra` when an image-pinning workflow is needed.
+- **Spegel** — P2P OCI image mirror. Single HelmRelease; reduces internet pulls.
+- **External Secrets Operator** — once Vaultwarden (or similar) is deployed and apps want secrets sourced from there.
+- **Kyverno** — when there's a real policy need.
+- **Renovate** — when there are 10+ HelmReleases and manual chart-bump PRs become a chore.
+- **Velero** — when stateful PVs need more than Longhorn snapshots + etcd snapshots can give.
+- **Tetragon** — runtime security observability.
+- **K8sGPT** — LLM-assisted cluster diagnosis.
+
+---
+
+## Disaster recovery rehearsal (recommended once)
+
+Run this once after the cluster is healthy to validate the DR triad (git + etcd snapshot + Longhorn backups):
+
+1. Re-flash one node, leaving the others up — verify 2/3 etcd quorum survives, node rejoins cleanly via `terraform apply` re-running its config.
+2. Restore an etcd snapshot into a single-node test cluster, verify resource counts match.
+3. Document the actual time-to-recover.
