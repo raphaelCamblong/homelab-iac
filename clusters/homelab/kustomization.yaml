@@ -6,6 +6,8 @@ kind: Kustomization
 resources:
   - gateway-api-crds.yaml
   - cilium.yaml
+  - cert-manager.yaml
+  - gateway.yaml
   - longhorn.yaml
   - csi-driver-nfs.yaml
   - compute-blade.yaml

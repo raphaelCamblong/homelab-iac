@@ -4,9 +4,11 @@ persistence:
   enabled: true
   storageClassName: longhorn
   size: 5Gi
+# Exposed via HTTPRoute (clusters/homelab/infrastructure/observability/grafana/httproute.yaml)
+# behind the Gateway at grafana.lab.<YOUR_DOMAIN>. No more dedicated LB IP.
 service:
-  type: LoadBalancer
-  loadBalancerIP: 192.168.1.201
+  type: ClusterIP
+  port: 80
 
 # Admin credentials come from the SOPS-encrypted Secret grafana-admin (generated
 # at action time — see clusters/homelab/infrastructure/observability/grafana/README.md).

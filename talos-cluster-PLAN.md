@@ -272,19 +272,21 @@ Expected order (approximate timings):
 | 1 | `flux-system`        | ~30s        | Flux managing itself |
 | 2 | `gateway-api-crds`   | ~30s        | CRDs only |
 | 3 | `cilium`             | ~3 min      | Once Ready, nodes go Ready |
+| 4 | `cert-manager`       | ~2 min      | parallel after cilium; ClusterIssuers Ready once Cloudflare token lands (step 9d) |
 | 4 | `longhorn`           | ~5 min      | depends on cilium |
 | 4 | `csi-driver-nfs`     | ~3 min      | parallel with longhorn |
 | 4 | `compute-blade`      | ~1 min      | parallel after cilium (DaemonSet, no Helm) |
 | 4 | `headlamp`           | ~2 min      | parallel after cilium |
-| 4 | `flux-receiver`      | ~30s        | parallel after cilium; smee-client CrashLooping until step 9 below |
+| 4 | `flux-receiver`      | ~30s        | parallel after cilium; smee-client CrashLooping until step 9b below |
+| 5 | `gateway`            | ~30s        | depends on cert-manager + gateway-api-crds; Certificate Ready after DNS-01 |
 | 5 | `observability-base` | ~30s        | depends on longhorn |
 | 6 | `vm-stack`           | ~3 min      | depends on observability-base |
 | 6 | `loki`               | ~2 min      | depends on observability-base |
 | 7 | `alloy`              | ~1 min      | depends on loki |
-| 7 | `grafana`            | ~2 min      | depends on vm-stack + loki (waits for grafana-admin Secret — see step 9) |
+| 7 | `grafana`            | ~2 min      | depends on vm-stack + loki (waits for grafana-admin Secret — see step 9c) |
 | 8 | `backup`             | ~2 min      | depends on csi-driver-nfs (waits for talos-secret — see step 7) |
 
-Total: ~10–15 minutes. Several Kustomizations stay `Ready=False` until the action-time secrets land (steps 7, 9, 10) — that's expected.
+Total: ~10–15 minutes. Several Kustomizations stay `Ready=False` until the action-time secrets land (steps 7, 9b, 9c, 9d) — that's expected.
 
 When everything settles:
 
@@ -346,6 +348,56 @@ Grafana's HelmRelease will reconcile within seconds (push triggered via the webh
 
 ---
 
+## Step 9d — Wire TLS-terminating Gateway (Cloudflare + Let's Encrypt)
+
+Replace the `<YOUR_DOMAIN>` placeholders, seed the Cloudflare API token, and create the public DNS records. See [`clusters/homelab/infrastructure/cert-manager/README.md`](clusters/homelab/infrastructure/cert-manager/README.md) for full detail; condensed sequence:
+
+```bash
+# 1. Replace the placeholder with the real Cloudflare-hosted domain
+read -p 'Your Cloudflare domain (e.g. example.com): ' DOMAIN
+read -p 'Contact email for Let's Encrypt: ' EMAIL
+sed -i '' "s|<YOUR_DOMAIN>|$DOMAIN|g" $(grep -rl '<YOUR_DOMAIN>' clusters/)
+sed -i '' "s|ops@$DOMAIN|$EMAIL|g" clusters/homelab/infrastructure/cert-manager/clusterissuer-*.yaml
+
+# 2. Generate a scoped Cloudflare API token in the Cloudflare dashboard:
+#    My Profile → API Tokens → Create Token → Custom token
+#    Permissions: Zone:DNS:Edit + Zone:Zone:Read
+#    Zone Resources: Include → Specific zone → <your domain>
+TOKEN=<paste-the-token>
+
+# 3. SOPS-encrypt the token Secret
+cat > clusters/homelab/infrastructure/cert-manager/cloudflare-token.yaml <<EOF
+apiVersion: v1
+kind: Secret
+metadata: { name: cloudflare-api-token, namespace: cert-manager }
+type: Opaque
+stringData:
+  api-token: $TOKEN
+EOF
+sops --encrypt --in-place clusters/homelab/infrastructure/cert-manager/cloudflare-token.yaml
+mv clusters/homelab/infrastructure/cert-manager/cloudflare-token.{yaml,sops.yaml}
+
+git add -A clusters/homelab/
+git commit -m "feat(infra): set domain + seed Cloudflare API token"
+git push
+
+# 4. Create the DNS records in Cloudflare (DNS → Records):
+#    A   *.lab   192.168.1.200   Proxy: DNS only (grey cloud)
+#    A   lab     192.168.1.200   Proxy: DNS only
+```
+
+After ~2 min:
+
+```bash
+kubectl -n cert-manager get clusterissuer       # both Ready=True
+kubectl -n gateway get certificate lab-wildcard # Ready=True (DNS-01 takes ~30-90s)
+kubectl -n gateway get gateway cilium           # PROGRAMMED=True, ADDRESS=192.168.1.200
+```
+
+If the Certificate is stuck, see `clusters/homelab/infrastructure/cert-manager/README.md` for the troubleshooting commands. Switch to `letsencrypt-staging` first if you're iterating to avoid prod rate limits.
+
+---
+
 ## Step 10 — End-to-end smoke
 
 ```bash
@@ -372,28 +424,28 @@ EOF
 kubectl get pvc -n default -w   # both Bound within 30s, then ^C
 kubectl delete pvc smoke-longhorn smoke-nfs -n default
 
-# LoadBalancer smoke
+# LoadBalancer smoke (Cilium L2 announcement)
 kubectl create deployment smoke --image=nginx:alpine
 kubectl expose deployment smoke --port=80 --type=LoadBalancer
 SMOKE_IP=$(kubectl get svc smoke -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 curl -s -o /dev/null -w "%{http_code}\n" "http://$SMOKE_IP"   # 200
 kubectl delete deployment smoke svc/smoke
 
-# Gateway API
-kubectl get gatewayclass   # cilium present
+# Gateway API exposure (cert-manager + Let's Encrypt + Cilium Gateway)
+kubectl get gatewayclass                       # cilium present
+kubectl -n gateway get gateway cilium          # PROGRAMMED=True, ADDRESS=192.168.1.200
+kubectl -n gateway get certificate lab-wildcard # READY=True
+curl -sI "https://grafana.lab.$DOMAIN"          # HTTP/2 200, valid LE cert
+curl -sI "http://grafana.lab.$DOMAIN"           # HTTP/2 301 (redirect to https)
 
-# Grafana — uses the SOPS-seeded admin password from step 9c, not admin/admin
-open http://192.168.1.201
-echo "User: admin  /  Password: see the value printed in step 9c"
-
-# Headlamp + Flux plugin
-open http://192.168.1.202
+# Dashboards via Gateway (replaces port-forwards and LB IPs)
+open "https://grafana.lab.$DOMAIN"   # admin / password from step 9c
+open "https://headlamp.lab.$DOMAIN"
 kubectl -n headlamp create token headlamp --duration=24h   # paste into UI
 # In UI: Settings → Plugin Catalog → search "flux" → Install
 kubectl -n headlamp rollout restart deploy/headlamp
-
-# Hubble
-kubectl -n kube-system port-forward svc/hubble-ui 12000:80   # open http://localhost:12000
+open "https://hubble.lab.$DOMAIN"
+open "https://longhorn.lab.$DOMAIN"
 
 # Trigger one etcd snapshot manually
 kubectl -n cluster-backup create job --from=cronjob/etcd-snapshot etcd-snapshot-manual
@@ -413,15 +465,17 @@ Write `CLUSTER.md` at the repo root once the values are verified:
 | What | Where |
 | --- | --- |
 | Kubernetes API VIP | https://192.168.1.140:6443 |
-| Grafana | http://192.168.1.201 |
-| Headlamp | http://192.168.1.202 (token: `kubectl -n headlamp create token headlamp`) |
-| Hubble UI | `kubectl -n kube-system port-forward svc/hubble-ui 12000:80` |
-| Longhorn UI | `kubectl -n longhorn-system port-forward svc/longhorn-frontend 8080:80` |
+| Grafana | https://grafana.lab.<YOUR_DOMAIN> (admin password from step 9c) |
+| Headlamp | https://headlamp.lab.<YOUR_DOMAIN> (token: `kubectl -n headlamp create token headlamp`) |
+| Hubble UI | https://hubble.lab.<YOUR_DOMAIN> |
+| Longhorn UI | https://longhorn.lab.<YOUR_DOMAIN> |
+| Gateway LB IP | 192.168.1.200 (`*.lab.<YOUR_DOMAIN>` resolves here) |
 | talosctl | `export TALOSCONFIG=$(cd cluster-bootstrap/terraform && terraform output -raw talosconfig_path)` |
 | kubectl | `export KUBECONFIG=$(cd cluster-bootstrap/terraform && terraform output -raw kubeconfig_path)` |
 | etcd snapshot recovery | `talosctl etcd recover --from /path/to/snapshot.db && talosctl bootstrap` |
 | Flux reconcile now | `flux reconcile kustomization flux-system --with-source` |
 | Force re-pull of a HelmRelease | `flux suspend hr <name> -n <ns> && flux resume hr <name> -n <ns>` |
+| Force certificate renewal | `cmctl renew -n gateway lab-wildcard` |
 ```
 
 ```bash
@@ -449,6 +503,8 @@ These are the resolved versions baked into the manifests in this repo. Bump in f
 | Headlamp chart | 0.42.0 | headlamp-k8s helm |
 | compute-blade-agent | v0.11.2 | ghcr.io/compute-blade-community (hand-rolled DaemonSet — no chart published) |
 | smee-client | latest | ghcr.io/probot/smee-client |
+| cert-manager | v1.20.2 | jetstack helm-charts |
+| Gateway API CRDs | v1.5.1 | already vendored (Step 5) |
 | terraform-provider-talos | ~> 0.11 (0.11.0) | siderolabs |
 | terraform-provider-flux | ~> 1.8 (1.8.7) | fluxcd |
 | terraform-provider-kubernetes | ~> 3.1 (3.1.0) | hashicorp — note major bump from 2.x |
