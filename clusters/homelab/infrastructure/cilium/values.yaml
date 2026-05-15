@@ -46,11 +46,13 @@ k8sClientRateLimit:
   qps: 50
   burst: 100
 
-# Pod-to-pod transparent encryption
+# Pod-to-pod transparent encryption only.
+# nodeEncryption is disabled: encrypting host-to-host traffic (kubelet, etcd)
+# adds non-trivial CPU on 4-core CM5s for limited threat-model gain on a LAN.
 encryption:
   enabled: true
   type: wireguard
-  nodeEncryption: true
+  nodeEncryption: false
 
 # Hubble (network observability)
 hubble:

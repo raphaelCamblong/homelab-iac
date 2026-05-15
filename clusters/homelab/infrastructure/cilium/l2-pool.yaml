@@ -1,5 +1,6 @@
 ---
-apiVersion: cilium.io/v2alpha1
+# Promoted to v2 in Cilium 1.18 — v2alpha1 still served as deprecated alias.
+apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: lan-pool
