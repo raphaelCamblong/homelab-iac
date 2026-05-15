@@ -1,0 +1,21 @@
+# Cluster-wide Talos machine config patch.
+# Applied to every node on top of the controlplane base config.
+cluster:
+  network:
+    cni:
+      name: none           # disable Talos's default Flannel; Cilium replaces it
+    podSubnets:
+      - 10.244.0.0/16
+    serviceSubnets:
+      - 10.96.0.0/12
+  proxy:
+    disabled: true         # Cilium's kube-proxy replacement handles this
+  apiServer:
+    certSANs:
+      - 192.168.1.140      # API VIP
+      - k8s.lan            # LAN hostname (must resolve to the VIP via router/Pi-hole DNS)
+  discovery:
+    enabled: true
+    registries:
+      service:
+        disabled: true     # don't use Sidero's discovery SaaS; k8s-native discovery only

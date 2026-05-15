@@ -1,0 +1,11 @@
+# Talos factory schematic.
+# Submitted to factory.talos.dev to mint an arm64 metal image at action time.
+# After POSTing this body, paste the schematic ID into a top-of-file comment
+# and commit. Talos + k8s versions are NOT pinned here — they live in the
+# factory URL (`/image/<id>/<talos-version>/metal-arm64.raw.xz`) and in
+# Terraform variables (cluster-bootstrap/terraform/variables.tf).
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/iscsi-tools
+      - siderolabs/util-linux-tools

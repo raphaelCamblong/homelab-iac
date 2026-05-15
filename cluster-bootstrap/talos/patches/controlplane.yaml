@@ -1,0 +1,14 @@
+# Controlplane patch applied to every CP node (we have 3, all CP+worker).
+# VIP gives us a single API endpoint across all 3 nodes without kube-vip.
+machine:
+  install:
+    disk: /dev/nvme0n1
+    wipe: false
+  network:
+    interfaces:
+      - interface: enX0
+        dhcp: true
+        vip:
+          ip: 192.168.1.140
+cluster:
+  allowSchedulingOnControlPlanes: true
