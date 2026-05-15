@@ -79,6 +79,37 @@ xz -d -k cluster-bootstrap/talos/metal-arm64.raw.xz
 
 ---
 
+## Step 2b — Set CM5 EEPROM to NVMe-first boot order (one-time per node)
+
+Fresh CM5 EEPROMs ship with `BOOT_ORDER=0xf41` (microSD first, then USB).
+With no microSD inserted, the board will hang at boot — the dd'd Talos
+NVMe will never be tried. You need `BOOT_ORDER=0xf416` (NVMe → microSD →
+USB → restart) BEFORE flashing in Step 3.
+
+Easiest path: temporarily boot each CM5 from a Raspberry Pi OS Lite microSD
+(grab the latest `arm64` image with `rpi-imager`) and run:
+
+```bash
+sudo apt update && sudo apt install -y rpi-eeprom
+sudo rpi-eeprom-config --edit
+# In the editor, set:
+#   BOOT_ORDER=0xf416
+# Save (Ctrl+O, Enter, Ctrl+X) — reboot to apply.
+sudo reboot
+```
+
+Confirm: `sudo rpi-eeprom-config | grep BOOT_ORDER` shows `0xf416`. The
+setting is persisted in EEPROM and survives power-cycles.
+
+Alternative path: `rpi-imager` GUI → "Misc utility images" → "Bootloader"
+→ "NVMe Boot". Write to microSD, insert into CM5, power on — it flashes
+the EEPROM and powers off automatically. Remove the microSD, done.
+
+Repeat for cm5-2 and cm5-3. After all three EEPROMs are reconfigured, move
+on to Step 3 (the NVMe will boot Talos with no microSD inserted).
+
+---
+
 ## Step 3 — Flash and boot each node
 
 For each CM5 (target IPs `.51`, `.52`, `.53`):
@@ -88,17 +119,23 @@ For each CM5 (target IPs `.51`, `.52`, `.53`):
 3. `diskutil unmountDisk /dev/diskN`
 4. `sudo dd if=cluster-bootstrap/talos/metal-arm64.raw of=/dev/rdiskN bs=4m status=progress && sync`
 5. `sudo diskutil eject /dev/diskN`
-6. Reseat NVMe, power on the CM5.
+6. Reseat NVMe, power on the CM5. (EEPROM is already set to NVMe-first per Step 2b.)
 7. After ~30s: `talosctl --nodes <ip> disks --insecure` — must list `/dev/nvme0n1`. Repeat with a DHCP fix if the node didn't get the static lease.
 
-Sanity-check all 3:
+Sanity-check all 3 + verify the predictable interface name is `end0`:
 
 ```bash
 for ip in 192.168.1.51 192.168.1.52 192.168.1.53; do
   echo "=== $ip ==="
   talosctl --nodes "$ip" disks --insecure | head -3
+  talosctl --nodes "$ip" get links --insecure | awk '/end0|eth/ {print}'
 done
 ```
+
+If the interface is NOT `end0` on any node (kernel/udev drift), update
+`cluster-bootstrap/talos/patches/controlplane.yaml` and
+`clusters/homelab/infrastructure/cilium/l2-pool.yaml` to match, then
+commit BEFORE running Terraform apply cycle 1.
 
 ---
 
