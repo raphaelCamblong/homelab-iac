@@ -4,8 +4,17 @@
 # and commit. Talos + k8s versions are NOT pinned here — they live in the
 # factory URL (`/image/<id>/<talos-version>/metal-arm64.raw.xz`) and in
 # Terraform variables (cluster-bootstrap/terraform/variables.tf).
+#
+# overlay: makes the generated image bootable on Raspberry Pi 5 / Compute
+# Module 5 — adds u-boot.bin, Pi 5 device tree blobs, and the right console
+# kernel args. Without this block the factory produces a generic arm64
+# metal image that will NOT boot on a Pi 5. Overlay names come from
+# siderolabs/talos@v1.13.2/pkg/machinery/platforms/sbcs.go.
 customization:
   systemExtensions:
     officialExtensions:
       - siderolabs/iscsi-tools
       - siderolabs/util-linux-tools
+overlay:
+  name: rpi_5
+  image: siderolabs/sbc-raspberrypi

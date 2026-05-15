@@ -14,7 +14,9 @@ kind: CiliumL2AnnouncementPolicy
 metadata:
   name: default
 spec:
+  # end0 = on-SoC Broadcom NIC on Pi 5 / CM5 (systemd-predictable naming).
+  # enX0 is the Xen-guest interface name; wrong here.
   interfaces:
-    - enX0
+    - end0
   externalIPs: true
   loadBalancerIPs: true
