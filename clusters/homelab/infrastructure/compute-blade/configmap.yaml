@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compute-blade-config
+  namespace: compute-blade
+data:
+  config.yaml: |
+    # Compute Blade agent config — schema from cmd/agent/default-config.yaml @ v0.11.2.
+    # The binary reads /etc/compute-blade-agent/config.yaml (Viper, hardcoded).
+
+    listen:
+      metrics: ":9666"
+      grpc: /tmp/compute-blade-agent.sock
+      authenticated: false
+      mode: unix
+
+    hal:
+      rpm_reporting_standard_fan_unit: true
+
+    # Idle LED: low-intensity green (PLATFORM spec "GreenSolid" idle).
+    idle_led_color:
+      red: 0
+      green: 16
+      blue: 0
+
+    identify_led_color:
+      red: 16
+      green: 0
+      blue: 16
+
+    criticalLedColor:
+      red: 64
+      green: 0
+      blue: 0
+
+    stealth_mode: false
+
+    # Fan curve — 40% below 45°C, 80% above 55°C, 100% above critical threshold.
+    fan_controller:
+      steps:
+        - temperature: 45
+          percent: 40
+        - temperature: 55
+          percent: 80
+
+    critical_temperature_threshold: 60
