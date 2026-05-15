@@ -7,16 +7,52 @@ data "sops_file" "talos_secrets" {
   input_type  = "yaml"
 }
 
-# Parse into the structure the Talos provider expects.
-# `talosctl gen secrets` produces YAML with certs.os.{crt,key} etc; if a provider
-# version produces schema validation errors, `terraform plan` will show the exact
-# field mismatch — adjust this locals block accordingly.
 locals {
-  talos_machine_secrets = yamldecode(data.sops_file.talos_secrets.raw)
+  _raw = yamldecode(data.sops_file.talos_secrets.raw)
 
+  # Transform talosctl's YAML field names into terraform-provider-talos 0.11's schema.
+  # The CLI writes:    certs.*.crt          secrets.bootstraptoken              secrets.secretboxencryptionsecret
+  # The provider wants: certs.*.cert        secrets.bootstrap_token             secrets.secretbox_encryption_secret
+  # Without this transform `data.talos_machine_configuration` errors with "missing required argument".
+  talos_machine_secrets = {
+    certs = {
+      etcd = {
+        cert = local._raw.certs.etcd.crt
+        key  = local._raw.certs.etcd.key
+      }
+      k8s = {
+        cert = local._raw.certs.k8s.crt
+        key  = local._raw.certs.k8s.key
+      }
+      k8s_aggregator = {
+        cert = local._raw.certs.k8s_aggregator.crt
+        key  = local._raw.certs.k8s_aggregator.key
+      }
+      k8s_serviceaccount = {
+        key = local._raw.certs.k8s_serviceaccount.key
+      }
+      os = {
+        cert = local._raw.certs.os.crt
+        key  = local._raw.certs.os.key
+      }
+    }
+    cluster = {
+      id     = local._raw.cluster.id
+      secret = local._raw.cluster.secret
+    }
+    secrets = {
+      bootstrap_token             = local._raw.secrets.bootstraptoken
+      secretbox_encryption_secret = local._raw.secrets.secretboxencryptionsecret
+    }
+    trustdinfo = {
+      token = local._raw.trustdinfo.token
+    }
+  }
+
+  # talosctl client auth for `apply` / `bootstrap` gRPC calls.
   talos_client_configuration = {
-    ca_certificate     = local.talos_machine_secrets.certs.os.crt
-    client_certificate = local.talos_machine_secrets.certs.os.crt
-    client_key         = local.talos_machine_secrets.certs.os.key
+    ca_certificate     = local._raw.certs.os.crt
+    client_certificate = local._raw.certs.os.crt
+    client_key         = local._raw.certs.os.key
   }
 }

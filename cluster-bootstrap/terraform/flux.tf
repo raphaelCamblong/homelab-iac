@@ -8,7 +8,7 @@ provider "kubernetes" {
 #    reconciliation of any SOPS-encrypted Kustomization (e.g. backup)
 #    succeeds without spurious "secret not found" failures.
 #    flux_bootstrap_git is idempotent against an existing namespace.
-resource "kubernetes_namespace" "flux_system" {
+resource "kubernetes_namespace_v1" "flux_system" {
   metadata {
     name = "flux-system"
   }
@@ -20,10 +20,10 @@ resource "kubernetes_namespace" "flux_system" {
 # 2) SOPS age decryption Secret — placed BEFORE flux_bootstrap_git so any
 #    Kustomization with `decryption: { provider: sops }` finds the key on
 #    its first reconcile.
-resource "kubernetes_secret" "sops_age" {
+resource "kubernetes_secret_v1" "sops_age" {
   metadata {
     name      = "sops-age"
-    namespace = kubernetes_namespace.flux_system.metadata[0].name
+    namespace = kubernetes_namespace_v1.flux_system.metadata[0].name
   }
   data = {
     "age.agekey" = file(pathexpand(var.age_key_path))
@@ -70,10 +70,11 @@ resource "flux_bootstrap_git" "this" {
   depends_on = [
     github_repository_deploy_key.flux,
     local_sensitive_file.kubeconfig,
-    kubernetes_secret.sops_age, # Flux only starts AFTER decryption key is in place.
+    kubernetes_secret_v1.sops_age, # Flux only starts AFTER decryption key is in place.
   ]
 
-  path = var.flux_path
+  path     = var.flux_path
+  interval = "1h" # webhook (see clusters/homelab/flux-receiver.yaml) drives real reconciles; polling is fallback
   # components_extra: image-reflector-controller + image-automation-controller
   # deferred — re-enable when Renovate/image-automation is actually needed.
 }
