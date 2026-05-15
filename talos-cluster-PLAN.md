@@ -200,8 +200,8 @@ export TF_VAR_github_token=<your-pat>
 
 cd cluster-bootstrap/terraform
 terraform plan -out=flux.tfplan
-# Expect 5 resources: kubernetes_namespace + kubernetes_secret + tls_private_key
-# + github_repository_deploy_key + flux_bootstrap_git
+# Expect 5 resources: kubernetes_namespace_v1 + kubernetes_secret_v1 (sops-age) +
+# tls_private_key + github_repository_deploy_key + flux_bootstrap_git.
 terraform apply flux.tfplan
 cd ../..
 
@@ -230,25 +230,82 @@ kubectl get kustomizations.kustomize.toolkit.fluxcd.io -A -w
 
 Expected order (approximate timings):
 
-| # | Kustomization      | Ready after | Notes |
-| - | ------------------ | ----------- | --- |
-| 1 | `flux-system`      | ~30s        | Flux managing itself |
-| 2 | `gateway-api-crds` | ~30s        | CRDs only |
-| 3 | `cilium`           | ~3 min      | Once Ready, nodes go Ready |
-| 4 | `longhorn`         | ~5 min      | depends on cilium |
-| 4 | `csi-driver-nfs`   | ~3 min      | parallel with longhorn |
-| 5 | `compute-blade`    | ~2 min      | parallel after cilium |
-| 5 | `headlamp`         | ~2 min      | parallel after cilium |
-| 6 | `observability`    | ~5 min      | depends on longhorn |
-| 7 | `backup`           | ~2 min      | depends on csi-driver-nfs |
+| # | Kustomization        | Ready after | Notes |
+| - | -------------------- | ----------- | --- |
+| 1 | `flux-system`        | ~30s        | Flux managing itself |
+| 2 | `gateway-api-crds`   | ~30s        | CRDs only |
+| 3 | `cilium`             | ~3 min      | Once Ready, nodes go Ready |
+| 4 | `longhorn`           | ~5 min      | depends on cilium |
+| 4 | `csi-driver-nfs`     | ~3 min      | parallel with longhorn |
+| 4 | `compute-blade`      | ~1 min      | parallel after cilium (DaemonSet, no Helm) |
+| 4 | `headlamp`           | ~2 min      | parallel after cilium |
+| 4 | `flux-receiver`      | ~30s        | parallel after cilium; smee-client CrashLooping until step 9 below |
+| 5 | `observability-base` | ~30s        | depends on longhorn |
+| 6 | `vm-stack`           | ~3 min      | depends on observability-base |
+| 6 | `loki`               | ~2 min      | depends on observability-base |
+| 7 | `alloy`              | ~1 min      | depends on loki |
+| 7 | `grafana`            | ~2 min      | depends on vm-stack + loki (waits for grafana-admin Secret — see step 9) |
+| 8 | `backup`             | ~2 min      | depends on csi-driver-nfs (waits for talos-secret — see step 7) |
 
-Total: ~10–15 minutes. When everything settles:
+Total: ~10–15 minutes. Several Kustomizations stay `Ready=False` until the action-time secrets land (steps 7, 9, 10) — that's expected.
+
+When everything settles:
 
 ```bash
 flux get kustomizations -A     # every row READY=True
 flux get helmreleases -A       # every row READY=True
 kubectl get nodes              # all 3 Ready
 ```
+
+---
+
+## Step 9b — Wire push-based reconciliation (smee.io + GitHub webhook)
+
+Polling is set to 1h — slow on purpose. Push-based reconciles cover the gap. See [`clusters/homelab/infrastructure/flux-receiver/README.md`](clusters/homelab/infrastructure/flux-receiver/README.md) for the full sequence; abbreviated:
+
+1. `open https://smee.io/new` — copy the channel URL.
+2. Generate a webhook HMAC token: `WEBHOOK_TOKEN=$(openssl rand -hex 32)`
+3. Author + SOPS-encrypt `clusters/homelab/infrastructure/flux-receiver/secret.sops.yaml` (contains `token: $WEBHOOK_TOKEN`). Commit + push.
+4. After `Receiver/github-receiver` reaches `Ready=True`, read its webhook path: `kubectl -n flux-system get receiver github-receiver -o jsonpath='{.status.webhookPath}'`.
+5. Author + SOPS-encrypt `clusters/homelab/infrastructure/flux-receiver/smee-config.sops.yaml` (contains `url: <smee-channel>` + `path: <webhook-path>`). Commit + push.
+6. GitHub repo → Settings → Webhooks → Add webhook:
+   - Payload URL: smee channel URL
+   - Content type: `application/json`
+   - Secret: `$WEBHOOK_TOKEN`
+   - Events: just `push` (and `ping`)
+7. Verify: trigger "Redeliver" on the webhook in the GitHub UI; `kubectl -n flux-system logs deploy/smee-client` shows the POST forwarded; `flux events --watch -A` shows `Reconciliation requested by github-receiver`.
+
+After this, every `git push` to `main` triggers an immediate reconcile.
+
+---
+
+## Step 9c — Seed Grafana admin password (SOPS)
+
+Grafana values reference `existingSecret: grafana-admin`. Generate it now:
+
+```bash
+NS=observability
+ADMIN_PASS=$(openssl rand -base64 32)
+cd clusters/homelab/infrastructure/observability/grafana
+cat > admin-secret.yaml <<EOF
+apiVersion: v1
+kind: Secret
+metadata: { name: grafana-admin, namespace: $NS }
+type: Opaque
+stringData:
+  admin-user: admin
+  admin-password: $ADMIN_PASS
+EOF
+sops --encrypt --in-place admin-secret.yaml
+mv admin-secret.yaml admin-secret.sops.yaml
+echo "Grafana admin password (back this up): $ADMIN_PASS"
+cd -
+
+git add clusters/homelab/infrastructure/observability/grafana/admin-secret.sops.yaml
+git commit -m "feat(grafana): seed admin secret" && git push
+```
+
+Grafana's HelmRelease will reconcile within seconds (push triggered via the webhook from step 9b).
 
 ---
 
@@ -288,8 +345,9 @@ kubectl delete deployment smoke svc/smoke
 # Gateway API
 kubectl get gatewayclass   # cilium present
 
-# Grafana
-open http://192.168.1.201   # default admin/admin, change immediately
+# Grafana — uses the SOPS-seeded admin password from step 9c, not admin/admin
+open http://192.168.1.201
+echo "User: admin  /  Password: see the value printed in step 9c"
 
 # Headlamp + Flux plugin
 open http://192.168.1.202
@@ -348,11 +406,12 @@ These are the resolved versions baked into the manifests in this repo. Bump in f
 | csi-driver-nfs chart | v4.13.2 | kubernetes-csi/csi-driver-nfs |
 | Gateway API | v1.5.1 | kubernetes-sigs/gateway-api releases |
 | VM-k8s-stack chart | 0.78.0 | victoriametrics helm-charts |
-| Loki chart | 7.0.0 | grafana helm-charts |
+| Loki chart | 14.2.0 | **grafana-community** helm-charts (grafana/loki 7.x is GEL-only since 2026-03) |
 | Alloy chart | 1.8.1 | grafana helm-charts |
 | Grafana chart | 10.5.15 | grafana helm-charts |
 | Headlamp chart | 0.42.0 | headlamp-k8s helm |
-| compute-blade-agent | v0.11.2 | ghcr.io/uptime-industries |
+| compute-blade-agent | v0.11.2 | ghcr.io/compute-blade-community (hand-rolled DaemonSet — no chart published) |
+| smee-client | latest | ghcr.io/probot/smee-client |
 | terraform-provider-talos | ~> 0.11 (0.11.0) | siderolabs |
 | terraform-provider-flux | ~> 1.8 (1.8.7) | fluxcd |
 | terraform-provider-kubernetes | ~> 3.1 (3.1.0) | hashicorp — note major bump from 2.x |
@@ -367,7 +426,16 @@ These are the resolved versions baked into the manifests in this repo. Bump in f
 
 1. **Boundary discipline matters.** Terraform owns the one-shot lifecycle (config apply, etcd bootstrap, Flux install, GitHub deploy key, in-cluster `sops-age` Secret). Flux owns everything continuously reconciled from git. **Do not `helm install` anything after Step 8** — if it isn't in git, it doesn't exist.
 2. **Cluster identity (Talos CA / etcd certs) lives in git**, SOPS-encrypted at `cluster-bootstrap/talos/secrets.sops.yaml`. Terraform reads it via `data.sops_file`. Lose the workstation, lose TF state — no problem; re-clone, decrypt with age key, `terraform apply` rebuilds against the same nodes. **The age private key is the single most critical secret.**
-3. **Reconciliation order is enforced by `dependsOn`** at the top-level Flux Kustomization level. Graph: `gateway-api-crds → cilium → {longhorn, csi-driver-nfs, compute-blade, headlamp}; longhorn → observability; csi-driver-nfs → backup`.
+3. **Reconciliation order is enforced by `dependsOn`** at the top-level Flux Kustomization level. Graph:
+   ```
+   gateway-api-crds → cilium → ┬→ longhorn → observability-base → ┬→ vm-stack ────→ grafana
+                               │                                    ├→ loki ──→ alloy ↗
+                               ├→ csi-driver-nfs → backup
+                               ├→ compute-blade
+                               ├→ headlamp
+                               └→ flux-receiver
+   ```
+   Observability is split into 5 Kustomizations so one component's failure doesn't block the others.
 4. **All in-git secrets are SOPS-encrypted.** Filenames end in `.sops.yaml`. Decryption happens in-cluster via the `sops-age` Secret in `flux-system` (created by Terraform from your local age key file).
 5. **`talosctl` privileges are sensitive.** The backup CronJob's talosconfig has `os:etcd:backup` role only, not full admin.
 6. **`KUBECONFIG=~/.kube/configs/homelab`** is the cluster's admin config. Regenerable from `terraform apply` since the underlying secrets are in git — no separate backup needed.
