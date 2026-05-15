@@ -1,0 +1,18 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-truenas
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: 192.168.1.25
+  share: /mnt/mega-tank/apps/k8s
+  mountPermissions: "0"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+mountOptions:
+  - nfsvers=4.1
+  - hard
+  - rsize=131072
+  - wsize=131072
+  - timeo=600
+  - retrans=2

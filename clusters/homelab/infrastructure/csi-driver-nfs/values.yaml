@@ -1,0 +1,6 @@
+# csi-driver-nfs chart v4.13.2 — pinned 2026-05-15.
+# StorageClass is authored as a separate manifest (storageclass.yaml) for visibility.
+controller:
+  replicas: 2
+storageClass:
+  create: false
