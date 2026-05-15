@@ -1,0 +1,62 @@
+# smee.io relay — long-polls https://smee.io/<channel> and forwards each
+# delivered HTTP POST to notification-controller's webhook-receiver Service.
+# This avoids exposing the cluster directly to the internet for GitHub
+# webhooks; smee handles inbound TLS + relay.
+#
+# Config (smee URL + receiver webhook path) comes from a SOPS Secret
+# generated at action time — see flux-receiver/README.md.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smee-client
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: smee-client
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # single connection — no rolling overlap needed
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smee-client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smee-client
+    spec:
+      containers:
+        - name: smee
+          # probot's official smee-client. Pinned to a tag at execution time
+          # by setting `imagePullPolicy: Always` (mutable) OR pinning a digest.
+          # Tag :latest is fine here — the project is small and stable.
+          image: ghcr.io/probot/smee-client:latest
+          args:
+            - "--url"
+            - "$(SMEE_URL)"
+            - "--target"
+            - "http://webhook-receiver.flux-system.svc.cluster.local/$(RECEIVER_PATH)"
+          env:
+            - name: SMEE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: smee-config
+                  key: url
+            - name: RECEIVER_PATH
+              valueFrom:
+                secretKeyRef:
+                  name: smee-config
+                  key: path
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: [ALL]

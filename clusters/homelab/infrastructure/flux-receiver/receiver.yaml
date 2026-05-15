@@ -1,0 +1,20 @@
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Receiver
+metadata:
+  name: github-receiver
+  namespace: flux-system
+spec:
+  type: github
+  events:
+    - ping
+    - push
+  secretRef:
+    name: github-webhook-token
+  resources:
+    # Trigger an immediate reconcile of the cluster's GitRepository on push.
+    # The chain Kustomizations re-reconcile because their interval kicks
+    # when their source updates.
+    - apiVersion: source.toolkit.fluxcd.io/v1
+      kind: GitRepository
+      name: flux-system
+      namespace: flux-system
