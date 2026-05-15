@@ -4,7 +4,7 @@ metadata:
   name: longhorn
   namespace: flux-system
 spec:
-  interval: 15m
+  interval: 1h
   retryInterval: 2m
   timeout: 15m
   path: ./clusters/homelab/infrastructure/longhorn

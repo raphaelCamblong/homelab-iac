@@ -4,7 +4,7 @@ metadata:
   name: csi-driver-nfs
   namespace: flux-system
 spec:
-  interval: 15m
+  interval: 1h
   retryInterval: 1m
   timeout: 10m
   path: ./clusters/homelab/infrastructure/csi-driver-nfs
