@@ -168,6 +168,18 @@ git add clusters/homelab/infrastructure/gateway-api-crds/standard-install.yaml
 git commit -m "feat: vendor gateway-api standard CRDs"
 ```
 
+**Note on channel.** `.fetch.sh` pulls the **experimental** bundle (filename retained for backwards compatibility). Cilium 1.19+ requires `TLSRoute v1alpha2`, which the standard channel no longer serves in v1.5.x. The bundle includes a `ValidatingAdmissionPolicy` named `safe-upgrades.gateway.networking.k8s.io` that refuses subsequent applies that would flip the channel annotation. If you ever bump versions or change channels, delete the policy first:
+
+```bash
+kubectl delete validatingadmissionpolicybinding safe-upgrades.gateway.networking.k8s.io
+kubectl delete validatingadmissionpolicy safe-upgrades.gateway.networking.k8s.io
+bash clusters/homelab/infrastructure/gateway-api-crds/.fetch.sh
+kubectl apply --server-side=true --force-conflicts \
+  -f clusters/homelab/infrastructure/gateway-api-crds/standard-install.yaml
+```
+
+The policy is re-created automatically by the new bundle.
+
 ---
 
 ## Step 6 — Terraform apply cycle 1: controlplane + etcd bootstrap
@@ -237,8 +249,20 @@ export TF_VAR_github_token=<your-pat>
 
 cd cluster-bootstrap/terraform
 terraform plan -out=flux.tfplan
-# Expect 5 resources: kubernetes_namespace_v1 + kubernetes_secret_v1 (sops-age) +
-# tls_private_key + github_repository_deploy_key + flux_bootstrap_git.
+# Expect 8 resources: kubernetes_namespace_v1 + kubernetes_secret_v1 (sops-age)
+# + tls_private_key + github_repository_deploy_key + flux_bootstrap_git
+# + null_resource.gateway_api_crds + helm_release.cilium
+# (+ the helm provider initialization).
+#
+# Why the extra two: Flux's controller pods can't schedule without CNI, and
+# Cilium normally comes up via Flux — chicken-and-egg. We pre-install Cilium
+# (and Gateway API CRDs it depends on) here so flux_bootstrap_git can wait on
+# Ready pods and proceed. helm_release.cilium uses lifecycle.ignore_changes
+# so Flux's helm-controller adopts the release on first reconcile without
+# TF fighting it on subsequent applies.
+#
+# Expect helm_release.cilium to take ~8 min on first apply (image pull on
+# arm64 + operator stabilization). The whole cycle is ~10-12 min.
 terraform apply flux.tfplan
 cd ../..
 
@@ -265,28 +289,36 @@ kubectl get kustomizations.kustomize.toolkit.fluxcd.io -A -w
 # Second terminal: flux events --watch -A
 ```
 
-Expected order (approximate timings):
+Expected order (approximate timings — measured 2026-05-16 on a Pi 5 NVMe arm64 validation cluster; CM5 NVMe likely similar):
 
 | # | Kustomization        | Ready after | Notes |
 | - | -------------------- | ----------- | --- |
 | 1 | `flux-system`        | ~30s        | Flux managing itself |
-| 2 | `gateway-api-crds`   | ~30s        | CRDs only |
-| 3 | `cilium`             | ~3 min      | Once Ready, nodes go Ready |
-| 4 | `cert-manager`       | ~2 min      | parallel after cilium; ClusterIssuers Ready once Cloudflare token lands (step 9d) |
-| 4 | `longhorn`           | ~5 min      | depends on cilium |
+| 2 | `gateway-api-crds`   | ~30s        | Pre-applied by TF in Step 8; Flux Kustomization just re-applies idempotently |
+| 3 | `cilium`             | ~30s        | Helm release already installed by TF in Step 8 (~8 min there); Flux's helm-controller **adopts** the release. `flux get hr -n kube-system cilium` will show `Helm upgrade succeeded for release cilium.v2` — `v2` is correct (v1 = TF install, v2 = first Flux-driven generation). |
+| 4 | `cert-manager`       | ~4 min      | ClusterIssuers Ready once Cloudflare token lands (step 9d) |
+| 4 | `longhorn`           | ~7 min      | depends on cilium |
 | 4 | `csi-driver-nfs`     | ~3 min      | parallel with longhorn |
 | 4 | `compute-blade`      | ~1 min      | parallel after cilium (DaemonSet, no Helm) |
 | 4 | `headlamp`           | ~2 min      | parallel after cilium |
 | 4 | `flux-receiver`      | ~30s        | parallel after cilium; smee-client CrashLooping until step 9b below |
-| 5 | `gateway`            | ~30s        | depends on cert-manager + gateway-api-crds; Certificate Ready after DNS-01 |
+| 5 | `gateway`            | ~30s        | depends on cert-manager + gateway-api-crds; Certificate Ready after DNS-01 (~60-120s after records exist) |
 | 5 | `observability-base` | ~30s        | depends on longhorn |
-| 6 | `vm-stack`           | ~3 min      | depends on observability-base |
-| 6 | `loki`               | ~2 min      | depends on observability-base |
+| 6 | `vm-stack`           | ~8 min      | depends on observability-base. See flake note below. |
+| 6 | `loki`               | ~3 min      | depends on observability-base |
 | 7 | `alloy`              | ~1 min      | depends on loki |
-| 7 | `grafana`            | ~2 min      | depends on vm-stack + loki (waits for grafana-admin Secret — see step 9c) |
+| 7 | `grafana`            | ~5 min      | depends on vm-stack + loki (waits for grafana-admin Secret — see step 9c) |
 | 8 | `backup`             | ~2 min      | depends on csi-driver-nfs (waits for talos-secret — see step 7) |
 
-Total: ~10–15 minutes. Several Kustomizations stay `Ready=False` until the action-time secrets land (steps 7, 9b, 9c, 9d) — that's expected.
+Total: **~35-50 minutes** (the older "10-15 min" estimate did not survive contact with reality). Several Kustomizations stay `Ready=False` until the action-time secrets land (steps 7, 9b, 9c, 9d) — that's expected.
+
+**vm-stack first-install flake.** Even with `spec.install.timeout: 10m`, vm-stack may show `InstallFailed` on the very first attempt — the chart bundles a victoriametrics-operator that briefly crashloops while its dependent CRDs (`AlertmanagerConfig`, `ScrapeConfig` from `prometheus-operator-crds`) register their field indexers. If `flux get hr -n observability vm-stack` shows `InstallFailed`, force a reconcile and it will succeed on the second attempt (CRDs and HelmRepository artifact are now warm):
+
+```bash
+flux -n observability reconcile helmrelease vm-stack --with-source
+```
+
+If `grafana` was waiting on `vm-stack` it will resume on its own once vm-stack flips to Ready.
 
 When everything settles:
 

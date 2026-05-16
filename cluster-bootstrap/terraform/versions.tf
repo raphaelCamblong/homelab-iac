@@ -37,5 +37,10 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.3"
     }
+    # Pre-Flux Cilium install (breaks the CNI/Flux bootstrap chicken-and-egg).
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.17"
+    }
   }
 }
