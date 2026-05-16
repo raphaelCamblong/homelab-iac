@@ -16,7 +16,7 @@ Spec lives in [`talos-cluster-PLATFORM.md`](./talos-cluster-PLATFORM.md).
   ```
 
 - [ ] Router DHCP reservations for `192.168.1.51`, `.52`, `.53` (one per CM5 MAC).
-- [ ] `192.168.1.140` (API VIP) and `192.168.1.200`-`.220` (LB pool) **outside** the DHCP range.
+- [ ] `192.168.1.140` (API VIP) and `192.168.1.200`-`.250` (LB pool) **outside** the DHCP range.
 - [ ] DNS: `k8s.lan` resolves to `192.168.1.140` (router or Pi-hole).
 - [ ] TrueNAS at `192.168.1.25` exporting `/mnt/mega-tank/apps/k8s` with rw for the cluster IPs.
 - [ ] GitHub Personal Access Token with `repo` + `admin:public_key` scopes.

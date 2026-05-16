@@ -77,7 +77,7 @@ Implementation details → `./talos-cluster-PLAN.md`.
 | LAN | `192.168.1.0/24` |
 | Node IPs | `192.168.1.51` / `.52` / `.53` |
 | API VIP | `192.168.1.140` |
-| LB pool | `192.168.1.200`–`192.168.1.220` |
+| LB pool | `192.168.1.200`–`192.168.1.250` |
 | Pod / Service CIDR | `10.244.0.0/16` / `10.96.0.0/12` |
 | API hostname | `k8s.lan` (LAN) + Tailscale MagicDNS (admin) |
 

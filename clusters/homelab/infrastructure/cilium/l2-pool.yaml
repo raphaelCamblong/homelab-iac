@@ -6,8 +6,10 @@ metadata:
   name: lan-pool
 spec:
   blocks:
+    # 192.168.1.200-250 = 51 LB IPs. Must stay outside the router's DHCP
+    # range. .251-.254 left clear for router admin / static reservations.
     - start: 192.168.1.200
-      stop: 192.168.1.220
+      stop: 192.168.1.250
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
