@@ -28,6 +28,15 @@ singleBinary:
     enabled: true
     storageClass: longhorn
     size: 5Gi
+# Loki chart validate.yaml rejects the install if BOTH monolithic and
+# scalable replicas are > 0. The chart defaults `read/write/backend` to 3
+# replicas each — clobber them to 0 since deploymentMode=SingleBinary.
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
 chunksCache:
   enabled: false
 resultsCache:

@@ -32,16 +32,29 @@ vmalert:
   spec:
     evaluationInterval: 30s
 # Renamed from `vmalertmanager:` to `alertmanager:` in chart 0.78.
+# NOTE: vmalertmanager.spec.storage requires the `volumeClaimTemplate` wrapper
+# (StorageSpec), unlike vmsingle.spec.storage which accepts a flat PVCSpec.
 alertmanager:
   enabled: true
   spec:
     replicaCount: 1
     storage:
-      accessModes: [ReadWriteOnce]
-      storageClassName: longhorn
-      resources:
-        requests:
-          storage: 1Gi
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: 1Gi
+
+# vm-operator subchart needs the prometheus-operator CRDs (AlertmanagerConfig,
+# ScrapeConfig, PodMonitor, ...) registered or it crashloops at startup
+# trying to set up field indexers. Enabling the bundled CRD subchart.
+victoria-metrics-operator:
+  crd:
+    create: true
+  prometheus-operator-crds:
+    enabled: true
 
 # Standard exporters
 kube-state-metrics:
