@@ -1,0 +1,60 @@
+# k3s-test overlay of clusters/homelab/infrastructure/observability/vm-stack/values.yaml.
+# Deltas:
+#   - vmsingle storage 20Gi → 5Gi (Pi NVMe + 2-replica Longhorn = 10Gi raw per 5Gi PVC)
+fullnameOverride: vm
+
+vmcluster:
+  enabled: false
+
+vmsingle:
+  enabled: true
+  spec:
+    retentionPeriod: "30d"
+    storage:
+      accessModes: [ReadWriteOnce]
+      storageClassName: longhorn
+      resources:
+        requests:
+          storage: 5Gi
+    extraArgs:
+      maxLabelsPerTimeseries: "40"
+
+vmagent:
+  enabled: true
+  spec:
+    selectAllByDefault: true
+    scrapeInterval: 30s
+
+vmalert:
+  enabled: true
+  spec:
+    evaluationInterval: 30s
+
+alertmanager:
+  enabled: true
+  spec:
+    replicaCount: 1
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: 1Gi
+
+victoria-metrics-operator:
+  crd:
+    create: true
+  prometheus-operator-crds:
+    enabled: true
+
+kube-state-metrics:
+  enabled: true
+prometheus-node-exporter:
+  enabled: true
+
+defaultRules:
+  create: true
+grafana:
+  enabled: false

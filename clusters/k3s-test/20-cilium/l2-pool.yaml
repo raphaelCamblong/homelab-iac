@@ -1,0 +1,22 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lan-pool
+spec:
+  blocks:
+    - start: 192.168.1.200
+      stop: 192.168.1.250
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default
+spec:
+  # k3s-test override: Pi 5 / Ubuntu raspi exposes the on-SoC NIC as eth0,
+  # not end0 (which is what predictable-naming gives on Talos). Prod manifests
+  # use end0; this overlay swaps it for eth0.
+  interfaces:
+    - eth0
+  externalIPs: true
+  loadBalancerIPs: true

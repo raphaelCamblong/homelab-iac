@@ -1,0 +1,63 @@
+# k3s-test overlay of clusters/homelab/infrastructure/cilium/values.yaml.
+# Deltas:
+#   - k8sServiceHost: 192.168.1.41 (k3s server, not Talos VIP 192.168.1.140)
+#   - operator.replicas: 1 (2-node cluster)
+# Everything else preserved from prod for parity validation.
+ipam:
+  mode: kubernetes
+
+kubeProxyReplacement: true
+k8sServiceHost: 192.168.1.41
+k8sServicePort: 6443
+
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+l2announcements:
+  enabled: true
+externalIPs:
+  enabled: true
+k8sClientRateLimit:
+  qps: 50
+  burst: 100
+
+encryption:
+  enabled: true
+  type: wireguard
+  nodeEncryption: false
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+gatewayAPI:
+  enabled: true
+
+operator:
+  replicas: 1
+
+rollOutCiliumPods: true

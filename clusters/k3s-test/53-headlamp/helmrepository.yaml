@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: headlamp
+  namespace: flux-system
+spec:
+  interval: 1h
+  # NOTE: project moved from `headlamp-k8s` org to `kubernetes-sigs` org;
+  # the old URL now 404s.
+  url: https://kubernetes-sigs.github.io/headlamp/

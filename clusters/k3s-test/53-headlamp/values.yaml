@@ -1,0 +1,9 @@
+# Headlamp chart 0.42.0 — pinned 2026-05-15.
+# Plugins (Flux, etc.) installed at runtime via the in-UI plugin manager
+# after first login — see talos-cluster-PLAN.md "Step 10" smoke tests.
+#
+# Exposed via HTTPRoute (clusters/homelab/infrastructure/headlamp/httproute.yaml)
+# behind the Gateway at headlamp.lab.<YOUR_DOMAIN>. No more dedicated LB IP.
+service:
+  type: ClusterIP
+  port: 80

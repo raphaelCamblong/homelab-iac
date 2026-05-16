@@ -1,0 +1,20 @@
+# k3s-test overlay of clusters/homelab/infrastructure/longhorn/values.yaml.
+# Deltas:
+#   - defaultReplicaCount: 2 (2-node cluster cannot satisfy 3-way quorum)
+#   - defaultClassReplicaCount: 2 (same reason)
+#   - taintToleration removed — k3s does not taint control-plane by default
+defaultSettings:
+  defaultDataPath: /var/lib/longhorn
+  defaultReplicaCount: 2
+  storageOverProvisioningPercentage: 100
+  storageMinimalAvailablePercentage: 10
+  upgradeChecker: false
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 2
+  reclaimPolicy: Retain
+csi:
+  attacherReplicaCount: 2
+  provisionerReplicaCount: 2
+  resizerReplicaCount: 2
+  snapshotterReplicaCount: 2
