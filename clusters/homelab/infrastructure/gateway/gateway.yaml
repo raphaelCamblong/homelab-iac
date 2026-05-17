@@ -4,8 +4,7 @@ metadata:
   name: cilium
   namespace: gateway
   annotations:
-    # Cilium-specific: pin the auto-provisioned LoadBalancer Service to .200.
-    # Without this, Cilium picks an arbitrary IP from the lan-pool.
+    # Pin LoadBalancer IP; without this Cilium picks an arbitrary IP from lan-pool.
     io.cilium/lb-ipam-ips: 192.168.1.200
 spec:
   gatewayClassName: cilium

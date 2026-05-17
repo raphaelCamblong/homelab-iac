@@ -9,5 +9,29 @@ configMapGenerator:
     namespace: observability
     files:
       - values.yaml
+  # Mirrors clusters/homelab/infrastructure/observability/grafana/kustomization.yaml.
+  # Dashboards are duplicated here because LoadRestrictionsRootOnly blocks
+  # `../..` file refs from overlays.
+  - name: dashboard-envoy-clusters
+    namespace: observability
+    files:
+      - dashboards/envoy-clusters.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+  - name: dashboard-hubble-l7-http
+    namespace: observability
+    files:
+      - dashboards/hubble-l7-http.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+  - name: dashboard-longhorn
+    namespace: observability
+    files:
+      - dashboards/longhorn.json
+    options:
+      labels:
+        grafana_dashboard: "1"
 generatorOptions:
   disableNameSuffixHash: true

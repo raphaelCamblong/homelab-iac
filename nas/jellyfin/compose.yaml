@@ -1,0 +1,32 @@
+# Jellyfin standalone compose. Runs on the NAS for two non-negotiable reasons:
+#   1. Hardware transcoding via Intel QuickSync (/dev/dri must be present in
+#      the container).
+#   2. Direct streaming reads off ZFS — multi-GB sequential I/O that's silly
+#      to bounce through NFS + a remote pod.
+#
+# Deploy via TrueNAS Custom App (sudo midclt call app.create). See ../README.md.
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    # host networking gives DLNA + real client IPs in logs (no NAT in front)
+    network_mode: host
+    user: "3000:3000"
+    group_add:
+      # Numeric GIDs — TrueNAS SCALE's Docker daemon doesn't NSS-resolve group
+      # names against the host /etc/group, so `group_add: ["video", "render"]`
+      # fails with "no matching entries in group file". If you ever move this
+      # compose to a different host, look up the right numbers there:
+      #   ssh <host> 'getent group video render'
+      - "44"       # video  (renders /dev/dri/card0 — outputs, not really used)
+      - "107"      # render (renders /dev/dri/renderD128 — the QSV device)
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      TZ: Europe/Paris
+      JELLYFIN_PublishedServerUrl: http://192.168.1.25:8096
+    volumes:
+      - /mnt/mega-tank/apps/jellyfin/config:/config
+      - /mnt/mega-tank/apps/jellyfin/cache:/cache
+      - /mnt/mega-tank/media:/data:ro   # SPEC: same /data path as Radarr; RO since Jellyfin only reads
+    restart: unless-stopped

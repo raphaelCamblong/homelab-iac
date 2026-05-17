@@ -1,0 +1,42 @@
+# Static PV for the single NFS export of `mega-tank/media`. The SPEC hardlink
+# contract requires ONE export covering both `movies/` and `downloads/` subtrees
+# at identical paths on NAS and in pods (`/data/movies`, `/data/downloads/...`).
+# Dynamic provisioning (via the existing `nfs-truenas` StorageClass) would
+# carve out a per-PVC sub-folder — wrong shape; we want one shared mount that
+# every consumer sees as `/data`.
+#
+# Uses csi-driver-nfs (already deployed via clusters/homelab/infrastructure/
+# csi-driver-nfs/) rather than the kubelet's built-in `nfs:` source — avoids
+# the host-package dependency on `mount.nfs4` and routes mounting through
+# the CSI plugin daemonset.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: media-data
+  labels:
+    pv.kubernetes.io/scope: media-stack
+spec:
+  capacity:
+    storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""           # explicit static binding; no SC involved
+  mountOptions:
+    - nfsvers=4.1
+    - hard
+    - rsize=131072
+    - wsize=131072
+    - timeo=600
+    - retrans=2
+  csi:
+    driver: nfs.csi.k8s.io
+    # Must be unique across the cluster — the CSI driver uses it to
+    # disambiguate static PVs (no dynamic provisioner involved).
+    volumeHandle: media-data
+    volumeAttributes:
+      server: 192.168.1.25
+      share: /mnt/mega-tank/media
+  claimRef:
+    namespace: media
+    name: media-data

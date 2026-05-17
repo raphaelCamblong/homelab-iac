@@ -1,13 +1,11 @@
 ---
-# Promoted to v2 in Cilium 1.18 — v2alpha1 still served as deprecated alias.
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: lan-pool
 spec:
   blocks:
-    # 192.168.1.200-250 = 51 LB IPs. Must stay outside the router's DHCP
-    # range. .251-.254 left clear for router admin / static reservations.
+    # Must stay outside the router's DHCP range.
     - start: 192.168.1.200
       stop: 192.168.1.250
 ---
@@ -16,8 +14,7 @@ kind: CiliumL2AnnouncementPolicy
 metadata:
   name: default
 spec:
-  # end0 = on-SoC Broadcom NIC on Pi 5 / CM5 (systemd-predictable naming).
-  # enX0 is the Xen-guest interface name; wrong here.
+  # end0 = on-SoC Broadcom NIC on Pi 5 / CM5; NOT enX0 (Xen-guest naming).
   interfaces:
     - end0
   externalIPs: true

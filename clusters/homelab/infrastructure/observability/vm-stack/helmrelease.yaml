@@ -15,9 +15,7 @@ spec:
         namespace: flux-system
   install:
     crds: CreateReplace
-    # 10m: chart brings up ~96 resources including vm-operator that briefly
-    # crashloops while prometheus-operator-crds subchart registers field
-    # indexers. Default 5m flakes on first install — measured on Pi NVMe arm64.
+    # Default 5m flakes on first install (~96 resources + vm-operator restart cycle).
     timeout: 10m
     remediation:
       retries: 3

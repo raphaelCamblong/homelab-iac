@@ -1,18 +1,19 @@
-# Grafana chart 10.5.15 — pinned 2026-05-15.
-# Exposed on the LB pool at .201 (LAN-only).
 persistence:
   enabled: true
   storageClassName: longhorn
   size: 5Gi
-# Exposed via HTTPRoute (clusters/homelab/infrastructure/observability/grafana/httproute.yaml)
-# behind the Gateway at grafana.lab.<YOUR_DOMAIN>. No more dedicated LB IP.
+# RWO PVC + 1 replica deadlocks RollingUpdate.
+deploymentStrategy:
+  type: Recreate
 service:
   type: ClusterIP
   port: 80
 
-# Admin credentials come from the SOPS-encrypted Secret grafana-admin (generated
-# at action time — see clusters/homelab/infrastructure/observability/grafana/README.md).
-# This prevents the chart's default admin/admin from being live on the LAN.
+# Not bundled; chart fetches latest compatible build at pod boot.
+plugins:
+  - victoriametrics-logs-datasource
+
+# admin Secret generated at action time — see README.md.
 admin:
   existingSecret: grafana-admin
   userKey: admin-user
@@ -24,31 +25,25 @@ datasources:
     datasources:
       - name: VictoriaMetrics
         type: prometheus
-        url: http://vmsingle-vm.observability.svc:8429
+        url: http://vmsingle-vm.observability.svc:8428
+        access: proxy
         isDefault: true
-      - name: Loki
-        type: loki
-        url: http://loki.observability.svc:3100
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-      - name: default
-        type: file
-        folder: ""
-        options:
-          path: /var/lib/grafana/dashboards/default
-dashboards:
-  default:
-    cilium:
-      gnetId: 16611
-      revision: 1
-      datasource: VictoriaMetrics
-    longhorn:
-      gnetId: 16888
-      revision: 9
-      datasource: VictoriaMetrics
-    node-exporter:
-      gnetId: 1860
-      revision: 33
-      datasource: VictoriaMetrics
+      - name: VictoriaLogs
+        type: victoriametrics-logs-datasource
+        url: http://vlogs.observability.svc:9428
+        access: proxy
+
+# SCProvider auto-generates the dashboardProviders entry — do NOT also declare one.
+sidecar:
+  dashboards:
+    enabled: true
+    SCProvider: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: /tmp/dashboards
+    searchNamespace: ALL
+
+# Dashboards are bundled as JSONs in ./dashboards/ wrapped by configMapGenerator
+# in kustomization.yaml. The chart's `dashboards.<provider>.<name>.gnetId` path
+# produces empty ConfigMaps under sidecar mode (gnetId fetch only runs in the
+# init-container path, which sidecar replaces).

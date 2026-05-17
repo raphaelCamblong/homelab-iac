@@ -5,6 +5,5 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  # NOTE: project moved from `headlamp-k8s` org to `kubernetes-sigs` org;
-  # the old URL now 404s.
+  # Old `headlamp-k8s` URL 404s; project moved to kubernetes-sigs org.
   url: https://kubernetes-sigs.github.io/headlamp/

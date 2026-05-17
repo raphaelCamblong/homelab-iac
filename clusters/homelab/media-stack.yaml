@@ -1,0 +1,27 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: media-stack
+  namespace: flux-system
+spec:
+  interval: 1h
+  retryInterval: 2m
+  timeout: 15m
+  path: ./clusters/homelab/apps/media-stack
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  dependsOn:
+    - name: longhorn        # config PVCs
+    - name: csi-driver-nfs  # /data PV uses the NFS CSI node plugin
+    - name: gateway         # HTTPRoutes need wildcard cert + Gateway listener
+  healthChecks:
+    - { apiVersion: apps/v1,                kind: Deployment, name: prowlarr,    namespace: media }
+    - { apiVersion: apps/v1,                kind: Deployment, name: radarr,      namespace: media }
+    - { apiVersion: apps/v1,                kind: Deployment, name: bazarr,      namespace: media }
+    - { apiVersion: apps/v1,                kind: Deployment, name: jellyseerr,  namespace: media }

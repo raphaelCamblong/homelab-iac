@@ -1,8 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Explicit aggregator of every top-level Flux Kustomization.
-# Without this, kustomize-controller auto-discovers files in this directory —
-# fine until a rename or new file silently drops out of sync. Explicit is safer.
+# Explicit list — auto-discovery silently drops renamed/new files.
 resources:
   - gateway-api-crds.yaml
   - cilium.yaml
@@ -13,9 +11,12 @@ resources:
   - compute-blade.yaml
   - headlamp.yaml
   - observability-base.yaml
+  - prometheus-operator-crds.yaml
   - vm-stack.yaml
-  - loki.yaml
+  - victoria-logs.yaml
   - alloy.yaml
   - grafana.yaml
   - backup.yaml
   - flux-receiver.yaml
+  - media-stack.yaml
+  - cloudflared.yaml

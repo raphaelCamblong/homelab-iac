@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: recyclarr
+  namespace: media
+spec:
+  schedule: "30 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 3000
+            runAsGroup: 3000
+            fsGroup: 3000
+          containers:
+            - name: recyclarr
+              image: ghcr.io/recyclarr/recyclarr:latest
+              imagePullPolicy: IfNotPresent
+              # `state repair --adopt` claims any existing-by-name Custom Formats
+              # into recyclarr's local state — fixes "already exists" errors
+              # after a prior failed sync.
+              command: ["sh", "-c"]
+              args:
+                - |
+                  recyclarr state repair --adopt --config /cfg/recyclarr.yml || true
+                  exec recyclarr sync --config /cfg/recyclarr.yml
+              env:
+                - { name: TZ, value: Europe/Paris }
+                - name: RADARR_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: media-stack-api-keys
+                      key: radarr
+              volumeMounts:
+                - { name: cfg,   mountPath: /cfg,    readOnly: true }
+                - { name: state, mountPath: /config }
+              resources:
+                requests: { memory: 64Mi, cpu: 50m }
+                limits:   { memory: 256Mi }
+          volumes:
+            - name: cfg
+              configMap:
+                name: recyclarr-config
+            - name: state
+              persistentVolumeClaim:
+                claimName: recyclarr-state

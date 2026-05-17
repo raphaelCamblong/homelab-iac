@@ -53,11 +53,27 @@ hubble:
     enabled: true
   ui:
     enabled: true
+  # Hubble L7 HTTP metrics feed the Gateway API / HTTP observability dashboard.
+  # Agent/operator metrics intentionally not enabled here either.
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - "httpV2:exemplars=true;labelsContext=source_ip,source_namespace,source_workload,destination_ip,destination_namespace,destination_workload,traffic_direction"
+    serviceMonitor:
+      enabled: true
 
 gatewayAPI:
   enabled: true
 
 operator:
   replicas: 1
+
+# Cilium-Envoy /metrics → feeds the "Cilium Gateway API Traffic" dashboard
+# with per-HTTPRoute-backend stats. See prod values comment for details.
+envoy:
+  prometheus:
+    serviceMonitor:
+      enabled: true
 
 rollOutCiliumPods: true

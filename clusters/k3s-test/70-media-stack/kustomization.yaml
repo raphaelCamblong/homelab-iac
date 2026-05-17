@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Files copied from clusters/homelab/apps/media-stack/ (LoadRestrictionsRootOnly
+# blocks `../..` file refs; base-reference doesn't work here because the prod
+# kustomization lists the SOPS placeholder Secret which only exists post-SOPS
+# bootstrap. The compute-blade overlay can use base-reference because it has
+# no such placeholder).
+#
+# media-stack-api-keys Secret is created at apply time via `kubectl create
+# secret generic ...` — see docs/media-stack/SETUP.md §0.
+resources:
+  # Namespace + shared PV/PVC
+  - namespace.yaml
+  - media-pv.yaml
+  - media-pvc.yaml
+
+  # k3s apps
+  - prowlarr/deployment.yaml
+  - prowlarr/service.yaml
+  - prowlarr/config-pvc.yaml
+  - prowlarr/httproute.yaml
+
+  - radarr/deployment.yaml
+  - radarr/service.yaml
+  - radarr/config-pvc.yaml
+  - radarr/httproute.yaml
+
+  - bazarr/deployment.yaml
+  - bazarr/service.yaml
+  - bazarr/config-pvc.yaml
+  - bazarr/httproute.yaml
+
+  - jellyseerr/deployment.yaml
+  - jellyseerr/service.yaml
+  - jellyseerr/config-pvc.yaml
+  - jellyseerr/httproute.yaml
+
+  - recyclarr/configmap.yaml
+  - recyclarr/cronjob.yaml
+  - recyclarr/state-pvc.yaml
+
+  # NAS-backed routing through the cluster Gateway (observability)
+  - nas-backends/jellyfin-service.yaml
+  - nas-backends/jellyfin-endpointslice.yaml
+  - nas-backends/jellyfin-httproute.yaml
+  - nas-backends/qbit-service.yaml
+  - nas-backends/qbit-endpointslice.yaml
+  - nas-backends/qbit-httproute.yaml

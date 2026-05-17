@@ -23,9 +23,7 @@ spec:
         - operator: Exists
       containers:
         - name: agent
-          # Container image is published; Helm chart is not (project moved
-          # from uptime-industries → compute-blade-community and switched to
-          # deb/rpm). We run the binary directly via a hand-rolled DaemonSet.
+          # Hand-rolled DaemonSet: upstream stopped publishing the Helm chart.
           image: ghcr.io/compute-blade-community/compute-blade-agent:v0.11.2
           imagePullPolicy: IfNotPresent
           ports:

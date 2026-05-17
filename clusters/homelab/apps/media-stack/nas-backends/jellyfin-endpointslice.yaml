@@ -1,0 +1,13 @@
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: jellyfin-nas-1
+  namespace: media
+  labels:
+    kubernetes.io/service-name: jellyfin-nas
+addressType: IPv4
+ports:
+  - { name: http, port: 8096, protocol: TCP }
+endpoints:
+  - addresses: ["192.168.1.25"]
+    conditions: { ready: true }

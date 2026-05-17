@@ -30,3 +30,28 @@ git add admin-secret.sops.yaml && git commit -m "feat(grafana): seed admin secre
 The `clusters/homelab/grafana.yaml` Flux Kustomization has `decryption: { provider: sops, secretRef: { name: sops-age } }` so it can decrypt this Secret at apply time.
 
 Without this seed, Grafana would launch with the chart's default `admin/admin`, exposed on the LAN until manually rotated.
+
+## Adding a dashboard (pure IaC)
+
+Dashboards are bundled as JSON files in `./dashboards/` and turned into ConfigMaps labeled `grafana_dashboard: "1"` via `configMapGenerator` in `kustomization.yaml`. A sidecar (`grafana-sc-dashboard`) watches those ConfigMaps and reconciles them into `/tmp/dashboards/` inside the Grafana container — including **removing** files when a ConfigMap is deleted. No PVC orphans, no UI changes survive a pod restart, no runtime grafana.com fetch.
+
+Why not the chart's `dashboards.<provider>.<name>.gnetId` block? It only populates ConfigMaps under the init-container path, not the sidecar path. Combined with sidecar mode it silently produces empty ConfigMaps. The bundled-JSON approach sidesteps that.
+
+To add one:
+
+```bash
+# 1. Fetch the JSON from grafana.com (replace <id> and <rev>).
+curl -fsSL "https://grafana.com/api/dashboards/<id>/revisions/<rev>/download" \
+  -o clusters/homelab/infrastructure/observability/grafana/dashboards/<name>.json
+
+# 2. Append an entry to kustomization.yaml's configMapGenerator (mirror the
+#    existing pattern; the `options.labels` block is what makes the sidecar
+#    discover it).
+
+# 3. Mirror both the JSON file AND the kustomization.yaml entry into
+#    clusters/k3s-test/64-grafana/ (LoadRestrictionsRootOnly forces the copy).
+
+# 4. Commit. Flux reconciles. The sidecar writes the file within ~30s.
+```
+
+vm-stack already ships ~16 bundled dashboards (kubernetes-views-*, victoriametrics-*, node-exporter-full, alertmanager-overview, etcd, ...) as labeled ConfigMaps — these come along for free since `sidecar.dashboards.searchNamespace: ALL` discovers them. Don't re-add anything vm-stack already provides.

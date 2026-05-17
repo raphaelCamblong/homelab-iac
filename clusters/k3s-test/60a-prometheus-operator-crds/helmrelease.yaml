@@ -1,0 +1,34 @@
+# prometheus-operator-crds — registers the monitoring.coreos.com CRDs
+# (PrometheusRule, AlertmanagerConfig, ScrapeConfig, PodMonitor,
+# ServiceMonitor, Probe, ThanosRuler, Alertmanager, Prometheus, PrometheusAgent).
+#
+# Required by victoria-metrics-operator's controller manager: its field
+# indexers fail cache sync at startup if these CRDs aren't registered, which
+# crashloops the operator pod even though VM doesn't use the prometheus
+# objects directly. The vm-stack chart's nested
+# `victoria-metrics-operator.prometheus-operator-crds.enabled: true` toggle
+# is silently no-op in chart 0.78.0 — we have to install the chart standalone.
+#
+# Cluster-scoped chart (just CRDs, no pods). Namespace below is just where
+# Helm stores the release record.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prometheus-operator-crds
+  namespace: observability
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: prometheus-operator-crds
+      version: 21.0.0   # pinned 2026-05-16; bump explicitly when prometheus-operator releases
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  install:
+    crds: CreateReplace
+    remediation: { retries: 3 }
+  upgrade:
+    crds: CreateReplace
+    remediation: { retries: 3 }

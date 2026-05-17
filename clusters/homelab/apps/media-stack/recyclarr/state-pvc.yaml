@@ -1,0 +1,13 @@
+# Persists recyclarr's "what I created in Radarr" tracking — without it,
+# every run hits "CFs with matching names already exist".
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: recyclarr-state
+  namespace: media
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 500Mi

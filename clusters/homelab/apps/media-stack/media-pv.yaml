@@ -1,0 +1,33 @@
+# Static PV — the hardlink contract (docs/media-stack/SPEC.md) requires ONE
+# NFS export covering both movies/ and downloads/ at identical paths on NAS
+# and in pods. Dynamic provisioning via nfs-truenas would carve a per-PVC
+# subfolder, which is the wrong shape.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: media-data
+  labels:
+    pv.kubernetes.io/scope: media-stack
+spec:
+  capacity:
+    storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  mountOptions:
+    - nfsvers=4.1
+    - hard
+    - rsize=131072
+    - wsize=131072
+    - timeo=600
+    - retrans=2
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: media-data
+    volumeAttributes:
+      server: 192.168.1.25
+      share: /mnt/mega-tank/media
+  claimRef:
+    namespace: media
+    name: media-data

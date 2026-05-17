@@ -1,10 +1,6 @@
-# smee.io relay — long-polls https://smee.io/<channel> and forwards each
-# delivered HTTP POST to notification-controller's webhook-receiver Service.
-# This avoids exposing the cluster directly to the internet for GitHub
-# webhooks; smee handles inbound TLS + relay.
-#
-# Config (smee URL + receiver webhook path) comes from a SOPS Secret
-# generated at action time — see flux-receiver/README.md.
+# smee.io relay: avoids exposing the cluster directly to the internet for
+# GitHub webhooks. Long-polls smee, forwards each delivery to the in-cluster
+# webhook-receiver Service.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -16,7 +12,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate # single connection — no rolling overlap needed
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: smee-client
@@ -27,9 +23,6 @@ spec:
     spec:
       containers:
         - name: smee
-          # probot's official smee-client. Pinned to a tag at execution time
-          # by setting `imagePullPolicy: Always` (mutable) OR pinning a digest.
-          # Tag :latest is fine here — the project is small and stable.
           image: ghcr.io/probot/smee-client:latest
           args:
             - "--url"

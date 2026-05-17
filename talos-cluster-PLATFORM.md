@@ -150,9 +150,9 @@ gateway-api-crds → cilium → ┬→ longhorn → observability
 | Layer | Component | Notes |
 | --- | --- | --- |
 | Metrics stack | `victoria-metrics-k8s-stack` chart | Bundles vmsingle (storage), vmagent (scraper), vmalert, kube-state-metrics, node-exporter — drop-in lean kube-prometheus-stack |
-| Logs storage | Loki single-binary | Filesystem backend on Longhorn |
-| Log shipper | Grafana Alloy (DaemonSet) | Tails pod logs, pushes to Loki — replaces Promtail |
-| Dashboards | Grafana | Pre-loaded: Cilium, Longhorn, node-exporter |
+| Logs storage | VictoriaLogs single-node | Filesystem backend on Longhorn; same vendor as the metrics stack |
+| Log shipper | Grafana Alloy (DaemonSet) | Tails pod logs, pushes to VictoriaLogs via Loki-compat ingestion (`/insert/loki/api/v1/push`) — replaces Promtail |
+| Dashboards | Grafana | Pre-loaded: Cilium Agent/Operator/Hubble, Longhorn, node-exporter, VictoriaMetrics |
 | Network flows | Hubble | Cilium-native |
 | Admin UI | Headlamp | Flux plugin installed manually post-deploy via in-UI plugin manager |
 
@@ -185,7 +185,7 @@ Default retention: 30 days metrics, 7 days logs.
 | GitOps | FluxCD (OCI sources) | hand-applied manifests |
 | Secrets in git | SOPS + age | plaintext tokens |
 | Metrics stack | victoria-metrics-k8s-stack (vmsingle + vmagent + KSM + node-exporter) | kube-prometheus-stack |
-| Logs | Loki + Grafana Alloy (DaemonSet log shipper) | Promtail |
+| Logs | VictoriaLogs + Grafana Alloy (DaemonSet log shipper via Loki-compat push) | Promtail |
 | Dashboards | Grafana | — |
 | Network observability | Hubble | — |
 | Admin UI | Headlamp (Flux plugin installed in-UI) | — |

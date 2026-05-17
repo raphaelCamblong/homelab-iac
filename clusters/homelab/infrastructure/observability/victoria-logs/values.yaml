@@ -1,0 +1,14 @@
+server:
+  # Pin Service name so Alloy + Grafana URLs are stable across chart bumps.
+  fullnameOverride: vlogs
+  retentionPeriod: 7d
+  persistentVolume:
+    enabled: true
+    storageClassName: longhorn
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi

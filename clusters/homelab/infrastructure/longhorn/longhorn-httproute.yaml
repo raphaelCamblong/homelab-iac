@@ -1,6 +1,3 @@
-# HTTPRoute for the Longhorn UI. Service longhorn-frontend lives in
-# longhorn-system (managed by the Longhorn chart). Attached to the
-# Gateway in the gateway namespace.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

@@ -4,8 +4,7 @@ metadata:
   name: letsencrypt-staging
 spec:
   acme:
-    # Staging issuer — use during initial Certificate testing to avoid
-    # hitting Let's Encrypt prod rate limits (5 duplicate certs / week).
+    # Used during Certificate testing to avoid LE prod's 5 duplicate certs / week limit.
     server: https://acme-staging-v02.api.letsencrypt.org/directory
     email: ops@<YOUR_DOMAIN>
     privateKeySecretRef:

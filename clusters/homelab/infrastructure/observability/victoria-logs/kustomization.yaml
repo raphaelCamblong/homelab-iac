@@ -4,7 +4,7 @@ namespace: observability
 resources:
   - helmrelease.yaml
 configMapGenerator:
-  - name: loki-values
+  - name: victoria-logs-values
     namespace: observability
     files:
       - values.yaml

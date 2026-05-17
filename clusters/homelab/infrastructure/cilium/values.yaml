@@ -1,8 +1,3 @@
-# Cilium chart 1.19.4 — pinned 2026-05-15.
-# Acts as CNI + kube-proxy replacement + service LB (L2 announcements)
-# + ingress (Gateway API) + transparent pod encryption (WireGuard)
-# + network observability (Hubble). Talos requires the capability + cgroup
-# overrides below — they are NOT optional for kube-proxy-free Talos.
 ipam:
   mode: kubernetes
 
@@ -10,9 +5,7 @@ kubeProxyReplacement: true
 k8sServiceHost: 192.168.1.140
 k8sServicePort: 6443
 
-# Required for kube-proxy replacement on Talos. IPC_LOCK + SYS_ADMIN are
-# the wide-surface ones — needed for eBPF map pinning + cgroup ops + WireGuard
-# — but every cap below is justified by a specific Cilium subsystem.
+# Capabilities + cgroup overrides below are required for kube-proxy-free Talos.
 securityContext:
   capabilities:
     ciliumAgent:
@@ -37,7 +30,6 @@ cgroup:
     enabled: false
   hostRoot: /sys/fs/cgroup
 
-# L2 announcements for Service LoadBalancer (replaces MetalLB)
 l2announcements:
   enabled: true
 externalIPs:
@@ -46,28 +38,39 @@ k8sClientRateLimit:
   qps: 50
   burst: 100
 
-# Pod-to-pod transparent encryption only.
-# nodeEncryption is disabled: encrypting host-to-host traffic (kubelet, etcd)
-# adds non-trivial CPU on 4-core CM5s for limited threat-model gain on a LAN.
+# nodeEncryption off: host-to-host encrypt adds non-trivial CPU on 4-core CM5s
+# for limited threat-model gain on a LAN.
 encryption:
   enabled: true
   type: wireguard
   nodeEncryption: false
 
-# Hubble (network observability)
 hubble:
   enabled: true
   relay:
     enabled: true
   ui:
     enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - "httpV2:exemplars=true;labelsContext=source_ip,source_namespace,source_workload,destination_ip,destination_namespace,destination_workload,traffic_direction"
+    serviceMonitor:
+      enabled: true
 
-# Gateway API (requires CRDs installed first — see gateway-api-crds Kustomization)
+# Envoy metrics feed the "Gateway API Traffic" dashboard (per-route latency /
+# status). Hubble L7 above is workload-aggregated; Envoy is route-aggregated.
+envoy:
+  prometheus:
+    serviceMonitor:
+      enabled: true
+
+# Requires gateway-api-crds Kustomization installed first.
 gatewayAPI:
   enabled: true
 
 operator:
   replicas: 2
 
-# Recommended on small clusters
 rollOutCiliumPods: true

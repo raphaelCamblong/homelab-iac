@@ -42,7 +42,7 @@ kubectl apply -k clusters/k3s-test/53-headlamp
 
 kubectl apply -k clusters/k3s-test/60-observability-common
 kubectl apply -k clusters/k3s-test/61-vm-stack
-kubectl apply -k clusters/k3s-test/62-loki
+kubectl apply -k clusters/k3s-test/62-victoria-logs
 kubectl apply -k clusters/k3s-test/63-alloy
 
 # Grafana needs admin Secret before applying.
@@ -73,7 +73,6 @@ All other manifests are referenced directly from `clusters/homelab/infrastructur
 
 - `clusters/homelab/backup.yaml` — Talos `talosctl etcd snapshot` CronJob; doesn't apply to k3s SQLite.
 - `clusters/homelab/flux-receiver.yaml` — depends on GitOps bootstrap; not used here.
-- Media stack — out of scope for this round.
 
 ## Findings against the prod manifests (already fixed in `clusters/homelab/`)
 
@@ -112,6 +111,10 @@ These are real bugs in the production-target manifests caught by the k3s validat
 | Longhorn UI | https://longhorn.lab.raphlamenace.xyz | replicas=2 (2-node cluster) |
 | Hubble UI | https://hubble.lab.raphlamenace.xyz | Cilium network observability |
 | StorageClass | `longhorn` (default), `local-path`, `nfs-truenas` | nfs-truenas points at 192.168.1.25:/mnt/mega-tank/apps/k8s — installs OK, PVCs only bind if that export exists |
+
+## Media stack
+
+First-launch setup lives in [`docs/media-stack/SETUP.md`](../../docs/media-stack/SETUP.md).
 
 ## Teardown
 

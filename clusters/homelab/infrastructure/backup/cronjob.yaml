@@ -14,8 +14,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: snapshot
-              # talosctl image tag should match cluster Talos version.
-              # Pinned v1.13.2 (matches Talos pin in cluster-bootstrap/terraform/variables.tf).
+              # Must match Talos version (cluster-bootstrap/terraform/variables.tf).
               image: ghcr.io/siderolabs/talosctl:v1.13.2
               command:
                 - /bin/sh

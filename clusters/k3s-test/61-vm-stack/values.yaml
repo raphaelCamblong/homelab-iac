@@ -43,16 +43,24 @@ alertmanager:
             requests:
               storage: 1Gi
 
-victoria-metrics-operator:
-  crd:
-    create: true
-  prometheus-operator-crds:
-    enabled: true
+# vm-operator needs monitoring.coreos.com CRDs registered (see prod values.yaml
+# comment). Installed standalone via the overlay at 60a-prometheus-operator-crds/.
 
 kube-state-metrics:
   enabled: true
 prometheus-node-exporter:
   enabled: true
+
+# k3s embeds controller-manager, scheduler, and etcd inside the apiserver —
+# no separate scrape endpoints exist. Disable to drop 3 failing
+# VMServiceScrapes, 3 ghost dashboards, and the alert rules that would fire
+# on missing data.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
 
 defaultRules:
   create: true

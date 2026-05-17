@@ -4,12 +4,34 @@ namespace: observability
 resources:
   - helmrelease.yaml
   - httproute.yaml
-  # admin-secret.sops.yaml is generated at action time — see README.md.
   - admin-secret.sops.yaml
 configMapGenerator:
   - name: grafana-values
     namespace: observability
     files:
       - values.yaml
+  # Envoy Clusters (gnetId 11021) — per-cluster (HTTPRoute backend) request,
+  # connection, and traffic stats. Works directly with cilium-envoy's metrics.
+  - name: dashboard-envoy-clusters
+    namespace: observability
+    files:
+      - dashboards/envoy-clusters.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+  - name: dashboard-hubble-l7-http
+    namespace: observability
+    files:
+      - dashboards/hubble-l7-http.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+  - name: dashboard-longhorn
+    namespace: observability
+    files:
+      - dashboards/longhorn.json
+    options:
+      labels:
+        grafana_dashboard: "1"
 generatorOptions:
   disableNameSuffixHash: true

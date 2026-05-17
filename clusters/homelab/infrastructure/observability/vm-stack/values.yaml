@@ -1,8 +1,5 @@
-# victoria-metrics-k8s-stack chart 0.78.0 — pinned 2026-05-15.
-# Bundled stack — single release, multiple components.
 fullnameOverride: vm
 
-# Disable vmcluster mode — use single-node vmsingle (right size for 3-node cluster).
 vmcluster:
   enabled: false
 
@@ -19,21 +16,16 @@ vmsingle:
     extraArgs:
       maxLabelsPerTimeseries: "40"
 
-# vmagent scrapes everything (kubelet/cAdvisor/apiserver/etc via defaults + KSM + node-exporter)
 vmagent:
   enabled: true
   spec:
-    selectAllByDefault: true # picks up VMServiceScrape from any namespace
+    selectAllByDefault: true
     scrapeInterval: 30s
 
-# Alerting — keep enabled but lightweight
 vmalert:
   enabled: true
   spec:
     evaluationInterval: 30s
-# Renamed from `vmalertmanager:` to `alertmanager:` in chart 0.78.
-# NOTE: vmalertmanager.spec.storage requires the `volumeClaimTemplate` wrapper
-# (StorageSpec), unlike vmsingle.spec.storage which accepts a flat PVCSpec.
 alertmanager:
   enabled: true
   spec:
@@ -47,23 +39,19 @@ alertmanager:
             requests:
               storage: 1Gi
 
-# vm-operator subchart needs the prometheus-operator CRDs (AlertmanagerConfig,
-# ScrapeConfig, PodMonitor, ...) registered or it crashloops at startup
-# trying to set up field indexers. Enabling the bundled CRD subchart.
-victoria-metrics-operator:
-  crd:
-    create: true
-  prometheus-operator-crds:
-    enabled: true
-
-# Standard exporters
 kube-state-metrics:
   enabled: true
 prometheus-node-exporter:
   enabled: true
 
-# Default scrape configs and dashboards from the chart
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+
 defaultRules:
   create: true
 grafana:
-  enabled: false # Grafana installed separately so we control datasources
+  enabled: false

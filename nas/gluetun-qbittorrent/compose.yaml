@@ -1,0 +1,59 @@
+# Gluetun + qBittorrent bundled compose. qBit shares Gluetun's network
+# namespace so ALL outbound traffic from qBit goes through the VPN tunnel.
+# If Gluetun's tunnel drops, qBit's traffic is dropped (kill switch).
+#
+# Deploy via:
+#   ssh truenas_admin@192.168.1.25 'sudo midclt call app.create ...'
+# See ../README.md for the full command.
+#
+# Substitutions performed at deploy time (envsubst):
+#   ${MULLVAD_WG_PRIVATE_KEY}   — from Mullvad account WireGuard config
+#   ${MULLVAD_WG_ADDRESSES}     — e.g. "10.x.x.x/32,fc00:.../128"
+#   ${MULLVAD_CITIES}           — default: Amsterdam,Frankfurt,Zurich
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add: [NET_ADMIN]
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      VPN_SERVICE_PROVIDER: mullvad
+      VPN_TYPE: wireguard
+      WIREGUARD_PRIVATE_KEY: ${MULLVAD_WG_PRIVATE_KEY}
+      WIREGUARD_ADDRESSES: ${MULLVAD_WG_ADDRESSES}
+      SERVER_CITIES: ${MULLVAD_CITIES:-Amsterdam,Frankfurt,Zurich}
+      # Allow LAN access (so the cluster Gateway can reach qBit's UI on
+      # 192.168.1.25:8080 through Gluetun) without leaking via the tunnel.
+      FIREWALL_OUTBOUND_SUBNETS: 192.168.1.0/24
+      TZ: Europe/Paris
+    ports:
+      # NAS host port 8090 → container 8080 (host :8080 is taken by welcome-app/caddy).
+      - "8090:8080"          # qBit Web UI (via Gluetun's netns)
+      - "6881:6881/tcp"      # qBit BT
+      - "6881:6881/udp"      # qBit BT
+    volumes:
+      - /mnt/mega-tank/apps/gluetun/config:/gluetun
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "https://am.i.mullvad.net/connected"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    network_mode: "service:gluetun"
+    environment:
+      PUID: "3000"
+      PGID: "3000"
+      TZ: Europe/Paris
+      WEBUI_PORT: "8080"
+    volumes:
+      - /mnt/mega-tank/apps/qbittorrent/config:/config
+      - /mnt/mega-tank/media:/data   # SPEC hardlink contract — identical path as Radarr's /data mount
+    restart: unless-stopped

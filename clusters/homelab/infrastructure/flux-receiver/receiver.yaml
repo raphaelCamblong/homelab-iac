@@ -11,9 +11,6 @@ spec:
   secretRef:
     name: github-webhook-token
   resources:
-    # Trigger an immediate reconcile of the cluster's GitRepository on push.
-    # The chain Kustomizations re-reconcile because their interval kicks
-    # when their source updates.
     - apiVersion: source.toolkit.fluxcd.io/v1
       kind: GitRepository
       name: flux-system

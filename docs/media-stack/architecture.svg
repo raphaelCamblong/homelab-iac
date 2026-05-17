@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" font-family="-apple-system, system-ui, sans-serif" font-size="13">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#444"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e6fb8"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2a8c4a"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c97315"/>
+    </marker>
+    <style>
+      .title { font-weight: 600; font-size: 14px; fill: #222; }
+      .label { font-size: 12px; fill: #444; }
+      .small { font-size: 11px; fill: #666; }
+      .edge  { stroke: #444; stroke-width: 1.4; fill: none; }
+      .edge-blue   { stroke: #1e6fb8; stroke-width: 1.6; fill: none; }
+      .edge-green  { stroke: #2a8c4a; stroke-width: 1.6; fill: none; }
+      .edge-orange { stroke: #c97315; stroke-width: 1.6; fill: none; }
+      .edge-dash   { stroke-dasharray: 5,4; }
+    </style>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="30" text-anchor="middle" font-size="18" font-weight="700" fill="#111">Media Stack — Architecture</text>
+  <text x="600" y="50" text-anchor="middle" class="small">NAS owns disk I/O · k3s owns orchestration · one NFS export bridges them</text>
+
+  <!-- ============ CLIENTS ============ -->
+  <rect x="60" y="80" width="240" height="60" rx="8" fill="#eef3f8" stroke="#9bb4cf"/>
+  <text x="180" y="105" text-anchor="middle" class="title">Public clients (Internet)</text>
+  <text x="180" y="125" text-anchor="middle" class="small">Browsers · Jellyfin apps · siblings</text>
+
+  <rect x="900" y="80" width="240" height="60" rx="8" fill="#eef3f8" stroke="#9bb4cf"/>
+  <text x="1020" y="105" text-anchor="middle" class="title">Admin / LAN clients</text>
+  <text x="1020" y="125" text-anchor="middle" class="small">Mac · iPhone · SMB · TrueNAS UI</text>
+
+  <!-- ============ EDGE ============ -->
+  <rect x="60" y="180" width="240" height="60" rx="8" fill="#fff4e0" stroke="#e0a44a"/>
+  <text x="180" y="205" text-anchor="middle" class="title">Cloudflare Tunnel + Access</text>
+  <text x="180" y="225" text-anchor="middle" class="small">One-Time PIN · raphlamenace.xyz</text>
+
+  <rect x="900" y="180" width="240" height="60" rx="8" fill="#fff4e0" stroke="#e0a44a"/>
+  <text x="1020" y="205" text-anchor="middle" class="title">Tailscale MagicDNS</text>
+  <text x="1020" y="225" text-anchor="middle" class="small">truenas-scale · split-tunnel</text>
+
+  <line x1="180" y1="140" x2="180" y2="180" class="edge" marker-end="url(#arrow)"/>
+  <line x1="1020" y1="140" x2="1020" y2="180" class="edge" marker-end="url(#arrow)"/>
+
+  <!-- ============ LAN BUS ============ -->
+  <rect x="60" y="280" width="1080" height="36" rx="6" fill="#f3f3f3" stroke="#bbb"/>
+  <text x="600" y="303" text-anchor="middle" class="label" font-weight="600">LAN 192.168.1.0/24  ·  Gigabit</text>
+
+  <line x1="180" y1="240" x2="180" y2="280" class="edge" marker-end="url(#arrow)"/>
+  <line x1="1020" y1="240" x2="1020" y2="280" class="edge" marker-end="url(#arrow)"/>
+
+  <!-- ============ NAS (TrueNAS) ============ -->
+  <rect x="60" y="350" width="500" height="320" rx="10" fill="#eaf4ee" stroke="#5fa97b" stroke-width="1.5"/>
+  <text x="80" y="375" class="title" fill="#205a36">TrueNAS SCALE — 192.168.1.25</text>
+  <text x="80" y="392" class="small">Dell OptiPlex 3010 · Intel QuickSync · LSI 9211-8i HBA</text>
+
+  <!-- NAS containers -->
+  <rect x="80" y="410" width="140" height="70" rx="6" fill="#fff" stroke="#5fa97b"/>
+  <text x="150" y="432" text-anchor="middle" class="title">Jellyfin</text>
+  <text x="150" y="450" text-anchor="middle" class="small">:8096</text>
+  <text x="150" y="466" text-anchor="middle" class="small">HW transcode (QSV)</text>
+
+  <rect x="240" y="410" width="140" height="70" rx="6" fill="#fff" stroke="#5fa97b"/>
+  <text x="310" y="432" text-anchor="middle" class="title">qBittorrent</text>
+  <text x="310" y="450" text-anchor="middle" class="small">:8080</text>
+  <text x="310" y="466" text-anchor="middle" class="small">network: container:gluetun</text>
+
+  <rect x="400" y="410" width="140" height="70" rx="6" fill="#fff" stroke="#5fa97b"/>
+  <text x="470" y="432" text-anchor="middle" class="title">Gluetun</text>
+  <text x="470" y="450" text-anchor="middle" class="small">VPN sidecar</text>
+  <text x="470" y="466" text-anchor="middle" class="small">kill switch ON</text>
+
+  <!-- qBit -> Gluetun arrow -->
+  <line x1="380" y1="445" x2="400" y2="445" class="edge-orange" marker-end="url(#arrow-orange)"/>
+
+  <!-- ZFS dataset -->
+  <rect x="80" y="510" width="460" height="140" rx="8" fill="#fdf3e3" stroke="#c97315" stroke-width="1.5"/>
+  <text x="310" y="532" text-anchor="middle" class="title" fill="#7a4708">ZFS pool: mega-tank/media   (single dataset, single NFS export)</text>
+
+  <rect x="100" y="550" width="120" height="40" rx="4" fill="#fff" stroke="#c97315"/>
+  <text x="160" y="575" text-anchor="middle" class="label">movies/</text>
+
+  <rect x="230" y="550" width="120" height="40" rx="4" fill="#fff" stroke="#c97315"/>
+  <text x="290" y="575" text-anchor="middle" class="label">tv/  (reserved)</text>
+
+  <rect x="360" y="550" width="160" height="40" rx="4" fill="#fff" stroke="#c97315"/>
+  <text x="440" y="575" text-anchor="middle" class="label">downloads/{in,com}plete</text>
+
+  <text x="310" y="615" text-anchor="middle" class="small">recordsize=1M · compression=lz4 · atime=off</text>
+  <text x="310" y="632" text-anchor="middle" class="small">hardlinks: movies/ ←—link()—— downloads/complete/</text>
+
+  <!-- Jellyfin -> ZFS read -->
+  <path d="M150,480 L150,510" class="edge-orange" marker-end="url(#arrow-orange)"/>
+  <!-- qBit -> ZFS write -->
+  <path d="M310,480 L310,510" class="edge-orange" marker-end="url(#arrow-orange)"/>
+
+  <!-- ============ k3s ============ -->
+  <rect x="640" y="350" width="500" height="320" rx="10" fill="#eef2fb" stroke="#1e6fb8" stroke-width="1.5"/>
+  <text x="660" y="375" class="title" fill="#143e6b">k3s cluster</text>
+  <text x="660" y="392" class="small">Light, API-driven · mounts /data via NFS CSI</text>
+
+  <rect x="660" y="410" width="140" height="60" rx="6" fill="#fff" stroke="#1e6fb8"/>
+  <text x="730" y="432" text-anchor="middle" class="title">Jellyseerr</text>
+  <text x="730" y="450" text-anchor="middle" class="small">request UI</text>
+
+  <rect x="820" y="410" width="140" height="60" rx="6" fill="#fff" stroke="#1e6fb8"/>
+  <text x="890" y="432" text-anchor="middle" class="title">Radarr</text>
+  <text x="890" y="450" text-anchor="middle" class="small">grab + import</text>
+
+  <rect x="980" y="410" width="140" height="60" rx="6" fill="#fff" stroke="#1e6fb8"/>
+  <text x="1050" y="432" text-anchor="middle" class="title">Prowlarr</text>
+  <text x="1050" y="450" text-anchor="middle" class="small">indexer proxy</text>
+
+  <rect x="660" y="495" width="140" height="60" rx="6" fill="#fff" stroke="#1e6fb8"/>
+  <text x="730" y="517" text-anchor="middle" class="title">Bazarr</text>
+  <text x="730" y="535" text-anchor="middle" class="small">subtitles</text>
+
+  <rect x="820" y="495" width="140" height="60" rx="6" fill="#fff" stroke="#1e6fb8"/>
+  <text x="890" y="517" text-anchor="middle" class="title">Recyclarr</text>
+  <text x="890" y="535" text-anchor="middle" class="small">CronJob · TRaSH-Guides</text>
+
+  <!-- k3s -> NFS -->
+  <rect x="820" y="585" width="180" height="55" rx="6" fill="#fdf3e3" stroke="#c97315" stroke-dasharray="4,3"/>
+  <text x="910" y="608" text-anchor="middle" class="label" fill="#7a4708">NFS mount /data</text>
+  <text x="910" y="625" text-anchor="middle" class="small">PVC ReadWriteMany</text>
+
+  <!-- Internal edges in k3s -->
+  <line x1="800" y1="440" x2="820" y2="440" class="edge-blue" marker-end="url(#arrow-blue)"/>
+  <line x1="960" y1="440" x2="980" y2="440" class="edge-blue" marker-end="url(#arrow-blue)"/>
+  <line x1="890" y1="470" x2="890" y2="495" class="edge-blue" marker-end="url(#arrow-blue)"/>
+
+  <!-- ============ CROSS-CLUSTER FLOWS ============ -->
+  <!-- Public client -> CF Tunnel -> Jellyseerr -->
+  <path d="M180,240 C180,260 730,330 730,410" class="edge-blue edge-dash" marker-end="url(#arrow-blue)"/>
+  <text x="455" y="265" class="small" fill="#1e6fb8">requests · streams</text>
+
+  <!-- Tailscale -> NAS for admin -->
+  <path d="M1020,240 C1020,260 310,330 310,410" class="edge-green edge-dash" marker-end="url(#arrow-green)"/>
+  <text x="800" y="265" class="small" fill="#2a8c4a">SSH · SMB · WebUI</text>
+
+  <!-- Radarr -> qBit (cross-LAN) -->
+  <path d="M890,470 C890,490 600,490 380,460" class="edge-orange edge-dash" marker-end="url(#arrow-orange)"/>
+  <text x="615" y="495" class="small" fill="#c97315">Radarr → qBit (LAN)</text>
+
+  <!-- k3s -> NFS -> ZFS -->
+  <path d="M910,640 C910,690 540,700 310,650" class="edge-orange" marker-end="url(#arrow-orange)"/>
+  <text x="600" y="685" class="small" fill="#c97315">NFS export (sync, no_subtree_check)</text>
+
+  <!-- ============ LEGEND ============ -->
+  <rect x="60" y="710" width="1080" height="90" rx="6" fill="#fafafa" stroke="#ddd"/>
+  <text x="80" y="732" class="title">Legend</text>
+
+  <line x1="80" y1="752" x2="120" y2="752" class="edge-blue" marker-end="url(#arrow-blue)"/>
+  <text x="130" y="756" class="small">HTTP / API (cluster-internal or via CF Tunnel)</text>
+
+  <line x1="430" y1="752" x2="470" y2="752" class="edge-green" marker-end="url(#arrow-green)"/>
+  <text x="480" y="756" class="small">Tailscale (admin plane)</text>
+
+  <line x1="700" y1="752" x2="740" y2="752" class="edge-orange" marker-end="url(#arrow-orange)"/>
+  <text x="750" y="756" class="small">Storage / data plane (NFS, disk, VPN egress)</text>
+
+  <rect x="80" y="770" width="14" height="14" fill="#eaf4ee" stroke="#5fa97b"/>
+  <text x="100" y="782" class="small">NAS (TrueNAS Custom Apps)</text>
+
+  <rect x="280" y="770" width="14" height="14" fill="#eef2fb" stroke="#1e6fb8"/>
+  <text x="300" y="782" class="small">k3s workload</text>
+
+  <rect x="430" y="770" width="14" height="14" fill="#fdf3e3" stroke="#c97315"/>
+  <text x="450" y="782" class="small">Storage (ZFS dataset / NFS mount)</text>
+
+  <rect x="700" y="770" width="14" height="14" fill="#fff4e0" stroke="#e0a44a"/>
+  <text x="720" y="782" class="small">Network edge (CF Tunnel, Tailscale)</text>
+</svg>

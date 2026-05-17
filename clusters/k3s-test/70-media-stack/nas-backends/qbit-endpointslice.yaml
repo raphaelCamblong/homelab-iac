@@ -1,0 +1,15 @@
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: qbit-nas-1
+  namespace: media
+  labels:
+    kubernetes.io/service-name: qbit-nas
+addressType: IPv4
+ports:
+  # NAS host port (qBit is reachable at 192.168.1.25:8090 — :8080 is held
+  # by an existing welcome-app/caddy container, so we mapped qBit to 8090).
+  - { name: http, port: 8090, protocol: TCP }
+endpoints:
+  - addresses: ["192.168.1.25"]
+    conditions: { ready: true }

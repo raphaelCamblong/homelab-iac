@@ -305,9 +305,9 @@ Expected order (approximate timings — measured 2026-05-16 on a Pi 5 NVMe arm64
 | 5 | `gateway`            | ~30s        | depends on cert-manager + gateway-api-crds; Certificate Ready after DNS-01 (~60-120s after records exist) |
 | 5 | `observability-base` | ~30s        | depends on longhorn |
 | 6 | `vm-stack`           | ~8 min      | depends on observability-base. See flake note below. |
-| 6 | `loki`               | ~3 min      | depends on observability-base |
-| 7 | `alloy`              | ~1 min      | depends on loki |
-| 7 | `grafana`            | ~5 min      | depends on vm-stack + loki (waits for grafana-admin Secret — see step 9c) |
+| 6 | `victoria-logs`      | ~2 min      | depends on observability-base |
+| 7 | `alloy`              | ~1 min      | depends on victoria-logs |
+| 7 | `grafana`            | ~5 min      | depends on vm-stack + victoria-logs (waits for grafana-admin Secret — see step 9c) |
 | 8 | `backup`             | ~2 min      | depends on csi-driver-nfs (waits for talos-secret — see step 7) |
 
 Total: **~35-50 minutes** (the older "10-15 min" estimate did not survive contact with reality). Several Kustomizations stay `Ready=False` until the action-time secrets land (steps 7, 9b, 9c, 9d) — that's expected.
@@ -529,7 +529,7 @@ These are the resolved versions baked into the manifests in this repo. Bump in f
 | csi-driver-nfs chart | v4.13.2 | kubernetes-csi/csi-driver-nfs |
 | Gateway API | v1.5.1 | kubernetes-sigs/gateway-api releases |
 | VM-k8s-stack chart | 0.78.0 | victoriametrics helm-charts |
-| Loki chart | 14.2.0 | **grafana-community** helm-charts (grafana/loki 7.x is GEL-only since 2026-03) |
+| VictoriaLogs chart | 0.12.1 | victoriametrics helm-charts (`victoria-logs-single`) |
 | Alloy chart | 1.8.1 | grafana helm-charts |
 | Grafana chart | 10.5.15 | grafana helm-charts |
 | Headlamp chart | 0.42.0 | headlamp-k8s helm |
@@ -553,8 +553,8 @@ These are the resolved versions baked into the manifests in this repo. Bump in f
 2. **Cluster identity (Talos CA / etcd certs) lives in git**, SOPS-encrypted at `cluster-bootstrap/talos/secrets.sops.yaml`. Terraform reads it via `data.sops_file`. Lose the workstation, lose TF state — no problem; re-clone, decrypt with age key, `terraform apply` rebuilds against the same nodes. **The age private key is the single most critical secret.**
 3. **Reconciliation order is enforced by `dependsOn`** at the top-level Flux Kustomization level. Graph:
    ```
-   gateway-api-crds → cilium → ┬→ longhorn → observability-base → ┬→ vm-stack ────→ grafana
-                               │                                    ├→ loki ──→ alloy ↗
+   gateway-api-crds → cilium → ┬→ longhorn → observability-base → ┬→ vm-stack ───────→ grafana
+                               │                                    ├→ victoria-logs ──→ alloy ↗
                                ├→ csi-driver-nfs → backup
                                ├→ compute-blade
                                ├→ headlamp

@@ -1,0 +1,11 @@
+# Selector-less Service paired with a manual EndpointSlice (Jellyfin runs on
+# the NAS). Routes Gateway → NAS:8096 so Hubble observes the flow.
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-nas
+  namespace: media
+spec:
+  type: ClusterIP
+  ports:
+    - { name: http, port: 8096, targetPort: 8096, protocol: TCP }

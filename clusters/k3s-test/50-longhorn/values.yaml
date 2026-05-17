@@ -18,3 +18,8 @@ csi:
   provisionerReplicaCount: 2
   resizerReplicaCount: 2
   snapshotterReplicaCount: 2
+
+# Expose Longhorn Manager metrics for Grafana dashboard population.
+metrics:
+  serviceMonitor:
+    enabled: true

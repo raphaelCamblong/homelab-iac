@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: recyclarr-config
+  namespace: media
+data:
+  recyclarr.yml: |
+    # TRaSH-Guides "HD Bluray + WEB" profile.
+    #
+    # The `trash_id` references TRaSH-Guides' profile blueprint — Recyclarr
+    # clones github.com/TRaSH-Guides/Guides on each run and applies the matched
+    # qualities, quality definitions, and the default unwanted-formats group
+    # automatically. No `custom_format_groups` block needed for the basic
+    # preset; add one only when overriding defaults.
+    #
+    # Swap variants by changing the trash_id (see
+    # /config/resources/trash-guides/git/official/docs/json/radarr/quality-profiles/
+    # inside the recyclarr container for the catalog).
+    radarr:
+      main:
+        base_url: http://radarr.media.svc.cluster.local:7878
+        api_key: !env_var RADARR_API_KEY
+        delete_old_custom_formats: true
+
+        quality_definition:
+          type: movie
+
+        quality_profiles:
+          - trash_id: d1d67249d3890e49bc12e275d989a7e9  # HD Bluray + WEB
+            reset_unmatched_scores:
+              enabled: true

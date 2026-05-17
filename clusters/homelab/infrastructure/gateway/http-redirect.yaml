@@ -1,5 +1,3 @@
-# Catch-all HTTP→HTTPS redirect attached to the Gateway's :80 listener.
-# Any hostname coming in on plain HTTP gets a 301 to https.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

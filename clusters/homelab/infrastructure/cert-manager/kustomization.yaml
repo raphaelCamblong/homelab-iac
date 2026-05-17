@@ -1,6 +1,3 @@
-# NOTE: cloudflare-token.sops.yaml is generated at action time — see
-# talos-cluster-PLAN.md "Step 9d: Configure Cloudflare API token + DNS"
-# and clusters/homelab/infrastructure/cert-manager/README.md.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: cert-manager

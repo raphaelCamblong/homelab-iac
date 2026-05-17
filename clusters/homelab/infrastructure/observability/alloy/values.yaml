@@ -1,11 +1,7 @@
-# Grafana Alloy chart 1.8.1 — pinned 2026-05-15.
-# DaemonSet that tails /var/log/pods and pushes to Loki.
-# Replaces Promtail. https://grafana.com/docs/alloy/latest/
 alloy:
   configMap:
     create: true
     content: |
-      // Discover pods, mount their log files, push to Loki.
       discovery.kubernetes "pods" {
         role = "pod"
       }
@@ -37,11 +33,11 @@ alloy:
 
       loki.write "default" {
         endpoint {
-          url = "http://loki.observability.svc:3100/loki/api/v1/push"
+          url = "http://vlogs.observability.svc:9428/insert/loki/api/v1/push"
         }
       }
 
 controller:
   type: daemonset
   tolerations:
-    - operator: Exists # also run on control-plane-only nodes (we have none, but futureproof)
+    - operator: Exists

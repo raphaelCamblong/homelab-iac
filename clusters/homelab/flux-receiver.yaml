@@ -12,8 +12,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  # No dependsOn: this is what enables fast reconciles for everything else.
-  # The notification-controller is installed as part of the Flux base bootstrap.
+  # No dependsOn — this is what enables fast reconciles for everything else.
   decryption:
     provider: sops
     secretRef:

@@ -3,10 +3,7 @@ kind: Namespace
 metadata:
   name: observability
   labels:
-    # privileged: prometheus-node-exporter needs hostNetwork + hostPID +
-    # hostPath /proc /sys /root + hostPort 9100. node-exporter is a DaemonSet
-    # by design; baseline blocks it. Scope still limited because the namespace
-    # is exclusively observability workloads (no user pods).
+    # privileged: node-exporter needs hostNetwork/hostPID/hostPath/hostPort; baseline blocks all four.
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: privileged
     pod-security.kubernetes.io/warn: privileged

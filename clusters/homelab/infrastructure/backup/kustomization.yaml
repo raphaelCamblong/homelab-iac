@@ -1,6 +1,3 @@
-# NOTE: talos-secret.sops.yaml is created at action time
-# (see talos-cluster-PLAN.md "Generate backup talosconfig" step).
-# Listing it here so kustomize references it on first reconcile.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
