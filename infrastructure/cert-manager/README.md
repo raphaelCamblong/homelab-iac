@@ -1,18 +1,15 @@
 # cert-manager
 
-Issues Let's Encrypt TLS certs via **DNS-01 against Cloudflare** for the wildcard `*.lab.<YOUR_DOMAIN>` cert consumed by `clusters/homelab/infrastructure/gateway/`.
+Issues Let's Encrypt TLS certs via **DNS-01 against Cloudflare** for the wildcard `*.${DOMAIN}` cert consumed by `clusters/homelab/infrastructure/gateway/`.
 
 ## Action-time setup (post-Flux-bootstrap)
 
-### 1. Replace the `<YOUR_DOMAIN>` placeholder
+### 1. Domain wiring
 
-```bash
-read -p 'Your Cloudflare domain (e.g. example.com): ' DOMAIN
-read -p 'Contact email (Let's Encrypt expiration notices): ' EMAIL
-# Replace placeholders everywhere
-sed -i '' "s|<YOUR_DOMAIN>|$DOMAIN|g"  $(grep -rl '<YOUR_DOMAIN>' clusters/)
-sed -i '' "s|ops@$DOMAIN|$EMAIL|g"     clusters/homelab/infrastructure/cert-manager/clusterissuer-*.yaml
-```
+Hostnames in the base manifests use the Flux variable `${DOMAIN}`, substituted
+per cluster via `postBuild.substituteFrom` from the `cluster-vars` ConfigMap in
+`clusters/<name>/cluster-vars.yaml` — no sed, no placeholder. The ACME contact
+email is hardcoded in `clusterissuer-{prod,staging}.yaml`.
 
 ### 2. Generate a Cloudflare scoped API token
 

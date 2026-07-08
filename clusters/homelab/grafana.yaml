@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 10m
-  path: ./clusters/homelab/infrastructure/observability/grafana
+  path: ./infrastructure/observability/grafana
   prune: true
   sourceRef:
     kind: GitRepository
@@ -24,3 +24,7 @@ spec:
       kind: HelmRelease
       name: grafana
       namespace: observability
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

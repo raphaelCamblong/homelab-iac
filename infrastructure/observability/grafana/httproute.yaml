@@ -10,7 +10,7 @@ spec:
       namespace: gateway
       sectionName: https
   hostnames:
-    - "grafana.lab.<YOUR_DOMAIN>"
+    - "grafana.${DOMAIN}"
   rules:
     - matches:
         - path:

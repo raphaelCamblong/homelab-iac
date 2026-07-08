@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 5m
-  path: ./clusters/homelab/infrastructure/prometheus-operator-crds
+  path: ./infrastructure/prometheus-operator-crds
   prune: true
   sourceRef:
     kind: GitRepository

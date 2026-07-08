@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 15m
-  path: ./clusters/homelab/infrastructure/observability/victoria-logs
+  path: ./infrastructure/observability/victoria-logs
   prune: true
   sourceRef:
     kind: GitRepository

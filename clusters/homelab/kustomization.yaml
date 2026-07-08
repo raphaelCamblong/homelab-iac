@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Explicit list — auto-discovery silently drops renamed/new files.
 resources:
+  - cluster-vars.yaml
   - gateway-api-crds.yaml
   - cilium.yaml
   - cert-manager.yaml
@@ -16,8 +17,8 @@ resources:
   - victoria-logs.yaml
   - alloy.yaml
   - grafana.yaml
-  - backup.yaml
+  # backup.yaml: Talos-only (etcd snapshots), re-add on Talos rollout
   - flux-receiver.yaml
   - media-stack.yaml
   - cloudflared.yaml
-  - tailscale.yaml
+  # - tailscale.yaml # needs authkey — re-enable after seeding tailscale-auth.sops.yaml

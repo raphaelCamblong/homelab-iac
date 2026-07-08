@@ -10,7 +10,7 @@ spec:
       namespace: gateway
       sectionName: https
   hostnames:
-    - "headlamp.lab.<YOUR_DOMAIN>"
+    - "headlamp.${DOMAIN}"
   rules:
     - matches:
         - path:

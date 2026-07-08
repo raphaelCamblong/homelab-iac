@@ -10,7 +10,7 @@ spec:
       namespace: gateway
       sectionName: https
   hostnames:
-    - "qbit.lab.<YOUR_DOMAIN>"
+    - "qbit.${DOMAIN}"
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }

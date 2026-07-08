@@ -10,7 +10,7 @@ spec:
       namespace: gateway
       sectionName: https
   hostnames:
-    - "jellyfin.lab.<YOUR_DOMAIN>"
+    - "jellyfin.${DOMAIN}"
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }

@@ -10,7 +10,7 @@ spec:
       namespace: gateway
       sectionName: https
   hostnames:
-    - "bazarr.lab.<YOUR_DOMAIN>"
+    - "bazarr.${DOMAIN}"
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }

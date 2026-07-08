@@ -10,7 +10,7 @@ spec:
       namespace: gateway
       sectionName: https
   hostnames:
-    - "radarr.lab.<YOUR_DOMAIN>"
+    - "radarr.${DOMAIN}"
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }

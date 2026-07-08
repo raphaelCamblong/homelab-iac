@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 10m
-  path: ./clusters/homelab/infrastructure/backup
+  path: ./infrastructure/backup
   prune: true
   sourceRef:
     kind: GitRepository

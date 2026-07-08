@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 15m
-  path: ./clusters/homelab/apps/media-stack
+  path: ./apps/media-stack
   prune: true
   sourceRef:
     kind: GitRepository
@@ -25,3 +25,7 @@ spec:
     - { apiVersion: apps/v1,                kind: Deployment, name: radarr,      namespace: media }
     - { apiVersion: apps/v1,                kind: Deployment, name: bazarr,      namespace: media }
     - { apiVersion: apps/v1,                kind: Deployment, name: jellyseerr,  namespace: media }
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

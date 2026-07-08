@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 15m
-  path: ./clusters/homelab/infrastructure/observability/vm-stack
+  path: ./infrastructure/observability/vm-stack
   prune: true
   sourceRef:
     kind: GitRepository
@@ -21,3 +21,22 @@ spec:
       kind: HelmRelease
       name: vm-stack
       namespace: observability
+  patches:
+    - target:
+        kind: HelmRelease
+        name: vm-stack
+        namespace: observability
+      patch: |
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: vm-stack
+          namespace: observability
+        spec:
+          values:
+            vmsingle:
+              spec:
+                storage:
+                  resources:
+                    requests:
+                      storage: 5Gi

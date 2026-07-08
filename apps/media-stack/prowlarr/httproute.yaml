@@ -10,7 +10,7 @@ spec:
       namespace: gateway
       sectionName: https
   hostnames:
-    - "prowlarr.lab.<YOUR_DOMAIN>"
+    - "prowlarr.${DOMAIN}"
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }

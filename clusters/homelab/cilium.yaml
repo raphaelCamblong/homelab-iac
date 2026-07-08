@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 10m
-  path: ./clusters/homelab/infrastructure/cilium
+  path: ./infrastructure/cilium
   prune: true
   sourceRef:
     kind: GitRepository
@@ -19,3 +19,34 @@ spec:
       kind: DaemonSet
       name: cilium
       namespace: kube-system
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  patches:
+    - target:
+        kind: HelmRelease
+        name: cilium
+        namespace: kube-system
+      patch: |
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: cilium
+          namespace: kube-system
+        spec:
+          values:
+            k8sServiceHost: 192.168.1.41
+            operator:
+              replicas: 1
+    - target:
+        kind: CiliumL2AnnouncementPolicy
+        name: default
+      patch: |
+        apiVersion: cilium.io/v2alpha1
+        kind: CiliumL2AnnouncementPolicy
+        metadata:
+          name: default
+        spec:
+          interfaces:
+            - eth0

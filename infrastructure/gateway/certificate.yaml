@@ -11,5 +11,5 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-    - "lab.<YOUR_DOMAIN>"
-    - "*.lab.<YOUR_DOMAIN>"
+    - "${DOMAIN}"
+    - "*.${DOMAIN}"

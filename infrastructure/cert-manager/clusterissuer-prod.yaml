@@ -5,7 +5,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: ops@<YOUR_DOMAIN>
+    email: raphael.camblong@baax.fr
     privateKeySecretRef:
       name: letsencrypt-prod-account
     solvers:

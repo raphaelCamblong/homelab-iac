@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 10m
-  path: ./clusters/homelab/infrastructure/csi-driver-nfs
+  path: ./infrastructure/csi-driver-nfs
   prune: true
   sourceRef:
     kind: GitRepository

@@ -6,7 +6,7 @@ spec:
   acme:
     # Used during Certificate testing to avoid LE prod's 5 duplicate certs / week limit.
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: ops@<YOUR_DOMAIN>
+    email: raphael.camblong@baax.fr
     privateKeySecretRef:
       name: letsencrypt-staging-account
     solvers:

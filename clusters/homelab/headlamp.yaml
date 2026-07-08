@@ -7,10 +7,14 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 5m
-  path: ./clusters/homelab/infrastructure/headlamp
+  path: ./infrastructure/headlamp
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
   dependsOn:
     - name: cilium
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
