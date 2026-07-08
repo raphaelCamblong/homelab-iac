@@ -19,10 +19,7 @@ resources:
   - alloy.yaml
   - grafana.yaml
   # backup.yaml: Talos-only (etcd snapshots), re-add on Talos rollout
-  # flux-receiver: removed — smee image unpullable on arm64, lab.* hosts are
-  # LAN-only so GitHub can't reach a Receiver anyway, and the GitRepository
-  # polls every 1m. Re-add via tunnel public hostname + HTTPRoute →
-  # webhook-receiver svc if sub-minute sync ever matters (see git history).
+  - flux-receiver.yaml
   - media-stack.yaml
   - cloudflared.yaml
   - tailscale.yaml

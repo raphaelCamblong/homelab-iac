@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Event-driven git sync: GitHub webhook → cloudflared tunnel public hostname
+# (flux-webhook.raphlamenace.xyz → webhook-receiver.flux-system.svc:80) →
+# Receiver validates HMAC → instant GitRepository reconcile. No relay needed —
+# the tunnel terminates in-cluster. Polling stays as fallback.
+resources:
+  - receiver.yaml
+  - secret.sops.yaml
