@@ -25,4 +25,4 @@ resources:
   # webhook-receiver svc if sub-minute sync ever matters (see git history).
   - media-stack.yaml
   - cloudflared.yaml
-  # - tailscale.yaml # needs authkey — re-enable after seeding tailscale-auth.sops.yaml
+  - tailscale.yaml
