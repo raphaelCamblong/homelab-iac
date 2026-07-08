@@ -20,3 +20,4 @@ resources:
   - flux-receiver.yaml
   - media-stack.yaml
   - cloudflared.yaml
+  - tailscale.yaml

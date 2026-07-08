@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# k3s-test overlay: copies of the prod manifests (LoadRestrictionsRootOnly blocks
+# ../.. refs). Identical to prod except the auth key Secret, which is created
+# out-of-band as a plain Secret (no SOPS on the test cluster):
+#   kubectl -n tailscale create secret generic tailscale-auth \
+#     --from-literal=authkey=<TS_AUTHKEY>
+# TS_HOSTNAME is `homelab-k3s` here so the test node is distinct on the tailnet.
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - deployment.yaml

@@ -52,6 +52,14 @@ kubectl create namespace observability --dry-run=client -o yaml | kubectl apply 
 kubectl -n observability create secret generic grafana-admin \
   --from-literal=admin-user=admin --from-literal=admin-password=$GRAFANA_PASS
 kubectl apply -k clusters/k3s-test/64-grafana
+
+# Tailscale node (subnet router) — auth key Secret first. Get a Reusable,
+# Pre-approved auth key from the Tailscale admin console → Settings → Keys.
+kubectl create namespace tailscale --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n tailscale create secret generic tailscale-auth --from-literal=authkey=<TS_AUTHKEY>
+kubectl apply -k clusters/k3s-test/56-tailscale
+# Then approve the 192.168.1.0/24 route: admin console → Machines → homelab-k3s
+# → Edit route settings. Until approved, the node is up but routes nothing.
 ```
 
 ## Deviations from `clusters/homelab/infrastructure/` baselines
@@ -65,6 +73,7 @@ kubectl apply -k clusters/k3s-test/64-grafana
 | `50-longhorn/values.yaml` | `defaultReplicaCount: 2`, `defaultClassReplicaCount: 2` | Quorum unachievable with 3 replicas on 2 nodes |
 | `61-vm-stack/values.yaml` | `vmsingle` storage 20Gi → 5Gi | Pi NVMe / 2-node Longhorn ceiling |
 | `64-grafana/` | Drops `admin-secret.sops.yaml` | Plain Secret created at runtime |
+| `56-tailscale/` | Drops `auth.sops.yaml`; `TS_HOSTNAME: homelab-k3s` | Plain Secret at runtime; distinct tailnet name vs prod `homelab` |
 | All HTTPRoutes + Certificate + ClusterIssuer | sed-substituted `<YOUR_DOMAIN>` → `raphlamenace.xyz` | k3s test cluster's domain |
 
 All other manifests are referenced directly from `clusters/homelab/infrastructure/` — no duplication.

@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# The tailscale-auth Secret (the ephemeral/reusable authkey) is NOT listed here —
+# it's SOPS-encrypted and applied at action time, same as cloudflared's token.
+# See README.md.
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - deployment.yaml
