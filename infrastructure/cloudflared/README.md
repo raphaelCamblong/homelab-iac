@@ -20,7 +20,7 @@ SOPS-encrypt the Secret and commit it:
 
 ```bash
 TUNNEL_TOKEN=<paste-from-cloudflare-dashboard>
-cat > clusters/homelab/infrastructure/cloudflared/secret.yaml <<EOF
+cat > infrastructure/cloudflared/secret.yaml <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -30,16 +30,12 @@ type: Opaque
 stringData:
   tunnel-token: $TUNNEL_TOKEN
 EOF
-sops --encrypt --in-place clusters/homelab/infrastructure/cloudflared/secret.yaml
-mv clusters/homelab/infrastructure/cloudflared/secret.{yaml,sops.yaml}
-git add clusters/homelab/infrastructure/cloudflared/secret.sops.yaml
+sops --encrypt --in-place infrastructure/cloudflared/secret.yaml
+mv infrastructure/cloudflared/secret.{yaml,sops.yaml}
+git add infrastructure/cloudflared/secret.sops.yaml
 git commit -m "feat(cloudflared): seed tunnel token"
 git push
 ```
-
-On the k3s-test cluster (no SOPS), the overlay applies a plain Secret at
-`clusters/k3s-test/55-cloudflared/secret.yaml`. Edit that file with the
-actual token and apply.
 
 ## Cutover from NAS-hosted cloudflared
 

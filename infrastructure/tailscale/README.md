@@ -25,7 +25,7 @@ Deployment (mirroring `cloudflared/`) is enough.
 
    ```bash
    TS_AUTHKEY=<paste-from-tailscale-admin>
-   cat > clusters/homelab/infrastructure/tailscale/auth.yaml <<EOF
+   cat > infrastructure/tailscale/auth.yaml <<EOF
    apiVersion: v1
    kind: Secret
    metadata:
@@ -35,10 +35,12 @@ Deployment (mirroring `cloudflared/`) is enough.
    stringData:
      authkey: $TS_AUTHKEY
    EOF
-   sops --encrypt --in-place clusters/homelab/infrastructure/tailscale/auth.yaml
-   mv clusters/homelab/infrastructure/tailscale/auth.{yaml,sops.yaml}
-   # add it to kustomization.yaml resources:
-   git add clusters/homelab/infrastructure/tailscale/
+   sops --encrypt --in-place infrastructure/tailscale/auth.yaml
+   mv infrastructure/tailscale/auth.{yaml,sops.yaml}
+   # add it to infrastructure/tailscale/kustomization.yaml's resources,
+   # then uncomment `tailscale.yaml` in clusters/homelab/kustomization.yaml
+   # (it's disabled there until this secret exists)
+   git add infrastructure/tailscale/ clusters/homelab/kustomization.yaml
    git commit -m "feat(tailscale): seed auth key"
    git push
    ```

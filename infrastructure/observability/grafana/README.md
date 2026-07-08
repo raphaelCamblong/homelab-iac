@@ -42,16 +42,16 @@ To add one:
 ```bash
 # 1. Fetch the JSON from grafana.com (replace <id> and <rev>).
 curl -fsSL "https://grafana.com/api/dashboards/<id>/revisions/<rev>/download" \
-  -o clusters/homelab/infrastructure/observability/grafana/dashboards/<name>.json
+  -o infrastructure/observability/grafana/dashboards/<name>.json
 
 # 2. Append an entry to kustomization.yaml's configMapGenerator (mirror the
 #    existing pattern; the `options.labels` block is what makes the sidecar
-#    discover it).
+#    discover it). Keep the generated ConfigMap's
+#    kustomize.toolkit.fluxcd.io/substitute: disabled annotation — dashboard
+#    JSON bodies contain their own Grafana ${...} template syntax, which
+#    Flux's envsubst would otherwise try (and fail) to resolve.
 
-# 3. Mirror both the JSON file AND the kustomization.yaml entry into
-#    clusters/k3s-test/64-grafana/ (LoadRestrictionsRootOnly forces the copy).
-
-# 4. Commit. Flux reconciles. The sidecar writes the file within ~30s.
+# 3. Commit. Flux reconciles. The sidecar writes the file within ~30s.
 ```
 
 vm-stack already ships ~16 bundled dashboards (kubernetes-views-*, victoriametrics-*, node-exporter-full, alertmanager-overview, etcd, ...) as labeled ConfigMaps — these come along for free since `sidecar.dashboards.searchNamespace: ALL` discovers them. Don't re-add anything vm-stack already provides.

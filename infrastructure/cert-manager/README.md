@@ -1,6 +1,6 @@
 # cert-manager
 
-Issues Let's Encrypt TLS certs via **DNS-01 against Cloudflare** for the wildcard `*.${DOMAIN}` cert consumed by `clusters/homelab/infrastructure/gateway/`.
+Issues Let's Encrypt TLS certs via **DNS-01 against Cloudflare** for the wildcard `*.${DOMAIN}` cert consumed by `infrastructure/gateway/`.
 
 ## Action-time setup (post-Flux-bootstrap)
 
@@ -28,7 +28,7 @@ Copy the token immediately (Cloudflare won't show it again).
 
 ```bash
 TOKEN=<paste-the-token>
-cat > clusters/homelab/infrastructure/cert-manager/cloudflare-token.yaml <<EOF
+cat > infrastructure/cert-manager/cloudflare-token.yaml <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -38,11 +38,11 @@ type: Opaque
 stringData:
   api-token: $TOKEN
 EOF
-sops --encrypt --in-place clusters/homelab/infrastructure/cert-manager/cloudflare-token.yaml
-mv clusters/homelab/infrastructure/cert-manager/cloudflare-token.yaml \
-   clusters/homelab/infrastructure/cert-manager/cloudflare-token.sops.yaml
+sops --encrypt --in-place infrastructure/cert-manager/cloudflare-token.yaml
+mv infrastructure/cert-manager/cloudflare-token.yaml \
+   infrastructure/cert-manager/cloudflare-token.sops.yaml
 
-git add clusters/homelab/infrastructure/cert-manager/cloudflare-token.sops.yaml
+git add infrastructure/cert-manager/cloudflare-token.sops.yaml
 git commit -m "feat(cert-manager): seed Cloudflare DNS-01 token"
 git push
 ```
@@ -87,7 +87,7 @@ Common failures: scoped token missing `Zone:Read`, DNS records not propagated ye
 
 ## Switching to staging during testing
 
-To validate a new Certificate without hitting Let's Encrypt prod rate limits, temporarily change `clusters/homelab/infrastructure/gateway/certificate.yaml`:
+To validate a new Certificate without hitting Let's Encrypt prod rate limits, temporarily change `infrastructure/gateway/certificate.yaml`:
 
 ```yaml
 issuerRef:

@@ -3,7 +3,7 @@
 Indexer manager. Pushes indexers to Radarr via the Apps sync.
 
 API key is pinned by the env-var override in the Prowlarr Deployment
-(`clusters/homelab/apps/media-stack/prowlarr/deployment.yaml`) — first launch
+(`apps/media-stack/prowlarr/deployment.yaml`) — first launch
 goes straight to the dashboard, no wizard.
 
 ## Setup (UI → `https://prowlarr.lab.<YOUR_DOMAIN>/`)
