@@ -15,14 +15,12 @@ API keys so values stay constant across rebuilds.
 
 ## 0. API-key Secret (one-time)
 
-### Prod (Talos + SOPS)
-
 ```bash
 PROWLARR_KEY=$(openssl rand -hex 16)
 RADARR_KEY=$(openssl rand -hex 16)
 JELLYSEERR_KEY=$(openssl rand -hex 16)   # for reference only — overwritten after Jellyseerr wizard
 
-cat > clusters/homelab/apps/media-stack/secrets/api-keys.yaml <<EOF
+cat > apps/media-stack/secrets/api-keys.yaml <<EOF
 apiVersion: v1
 kind: Secret
 metadata: { name: media-stack-api-keys, namespace: media }
@@ -32,21 +30,11 @@ stringData:
   radarr: $RADARR_KEY
   jellyseerr: $JELLYSEERR_KEY
 EOF
-sops --encrypt --in-place clusters/homelab/apps/media-stack/secrets/api-keys.yaml
-mv clusters/homelab/apps/media-stack/secrets/api-keys{,.sops}.yaml
-git add clusters/homelab/apps/media-stack/secrets/api-keys.sops.yaml
+sops --encrypt --in-place apps/media-stack/secrets/api-keys.yaml
+mv apps/media-stack/secrets/api-keys{,.sops}.yaml
+git add apps/media-stack/secrets/api-keys.sops.yaml
 git commit -m "feat(media-stack): seed API-key Secret"
-```
-
-### k3s-test (no SOPS)
-
-```bash
-export KUBECONFIG=~/.kube/configs/k3s-test
-kubectl -n media create secret generic media-stack-api-keys \
-  --from-literal=prowlarr=$(openssl rand -hex 16) \
-  --from-literal=radarr=$(openssl rand -hex 16) \
-  --from-literal=jellyseerr=placeholder
-kubectl -n media rollout restart deploy/prowlarr deploy/radarr
+git push
 ```
 
 Verify the env-var override picked up:

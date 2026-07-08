@@ -1,6 +1,22 @@
 # Talos Cluster — Action Runbook
 
-This runbook covers only the **commands you run when you have physical access** to the 3 CM5 nodes and a tools-installed workstation. Every YAML / HCL file referenced has already been authored under `cluster-bootstrap/` and `clusters/homelab/` — see `git log -- cluster-bootstrap clusters` for the layout.
+> **Status note (post k3s cutover):** the 2-node Pi 5 k3s cluster is now the
+> live, Flux-bootstrapped production cluster (`flux bootstrap github
+> --path=clusters/homelab`, syncing from `main`). This runbook is no longer a
+> first-ever bootstrap — the Talos rollout becomes "add a new
+> `clusters/<name>/` thin layer that consumes the same root `infrastructure/`
+> + `apps/` bases, then `flux bootstrap` that cluster." Step 1's age-key
+> generation is already done (the key exists at
+> `~/.config/sops/age/homelab.agekey` and `.sops.yaml`'s recipient is real,
+> not a placeholder) — skip the key-generation part of Step 1, but the
+> `.sops.yaml` path rules may still need a Talos-specific entry reviewed.
+> Paths below have been updated for the current repo layout
+> (`infrastructure/`, `apps/` at repo root rather than under
+> `clusters/homelab/`), but the rest of this runbook has not been re-audited
+> against the live cluster's actual current state (e.g. `flux-receiver` in
+> Step 9b no longer exists — it was removed, not just relocated).
+
+This runbook covers only the **commands you run when you have physical access** to the 3 CM5 nodes and a tools-installed workstation. Every YAML / HCL file referenced has already been authored under `cluster-bootstrap/`, `infrastructure/`, `apps/`, and `clusters/homelab/` — see `git log -- cluster-bootstrap infrastructure apps clusters` for the layout.
 
 Spec lives in [`talos-cluster-PLATFORM.md`](./talos-cluster-PLATFORM.md).
 
@@ -134,7 +150,7 @@ done
 
 If the interface is NOT `end0` on any node (kernel/udev drift), update
 `cluster-bootstrap/talos/patches/controlplane.yaml` and
-`clusters/homelab/infrastructure/cilium/l2-pool.yaml` to match, then
+`infrastructure/cilium/l2-pool.yaml` to match, then
 commit BEFORE running Terraform apply cycle 1.
 
 ---
@@ -161,10 +177,10 @@ git commit -m "feat: SOPS-encrypted Talos cluster secrets bundle"
 Flux can't source raw GitHub release URLs, so the CRDs are vendored at action time:
 
 ```bash
-bash clusters/homelab/infrastructure/gateway-api-crds/.fetch.sh
-ls -la clusters/homelab/infrastructure/gateway-api-crds/standard-install.yaml
+bash infrastructure/gateway-api-crds/.fetch.sh
+ls -la infrastructure/gateway-api-crds/standard-install.yaml
 
-git add clusters/homelab/infrastructure/gateway-api-crds/standard-install.yaml
+git add infrastructure/gateway-api-crds/standard-install.yaml
 git commit -m "feat: vendor gateway-api standard CRDs"
 ```
 
@@ -173,9 +189,9 @@ git commit -m "feat: vendor gateway-api standard CRDs"
 ```bash
 kubectl delete validatingadmissionpolicybinding safe-upgrades.gateway.networking.k8s.io
 kubectl delete validatingadmissionpolicy safe-upgrades.gateway.networking.k8s.io
-bash clusters/homelab/infrastructure/gateway-api-crds/.fetch.sh
+bash infrastructure/gateway-api-crds/.fetch.sh
 kubectl apply --server-side=true --force-conflicts \
-  -f clusters/homelab/infrastructure/gateway-api-crds/standard-install.yaml
+  -f infrastructure/gateway-api-crds/standard-install.yaml
 ```
 
 The policy is re-created automatically by the new bundle.
@@ -211,7 +227,7 @@ The etcd-snapshot CronJob runs with a talosconfig scoped to `os:etcd:backup` onl
 talosctl config new --roles os:etcd:backup --crt-ttl 8760h /tmp/backup-talosconfig
 
 B64=$(base64 -i /tmp/backup-talosconfig)
-cat > clusters/homelab/infrastructure/backup/talos-secret.yaml <<EOF
+cat > infrastructure/backup/talos-secret.yaml <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -222,14 +238,14 @@ data:
   talosconfig: $B64
 EOF
 
-sops --encrypt --in-place clusters/homelab/infrastructure/backup/talos-secret.yaml
-mv clusters/homelab/infrastructure/backup/talos-secret.yaml \
-   clusters/homelab/infrastructure/backup/talos-secret.sops.yaml
+sops --encrypt --in-place infrastructure/backup/talos-secret.yaml
+mv infrastructure/backup/talos-secret.yaml \
+   infrastructure/backup/talos-secret.sops.yaml
 rm /tmp/backup-talosconfig
 
-grep -q "ENC\[AES256_GCM" clusters/homelab/infrastructure/backup/talos-secret.sops.yaml && echo encrypted
+grep -q "ENC\[AES256_GCM" infrastructure/backup/talos-secret.sops.yaml && echo encrypted
 
-git add clusters/homelab/infrastructure/backup/talos-secret.sops.yaml
+git add infrastructure/backup/talos-secret.sops.yaml
 git commit -m "feat(backup): SOPS-encrypted talosconfig for etcd snapshots"
 git push origin main
 ```
@@ -332,13 +348,13 @@ kubectl get nodes              # all 3 Ready
 
 ## Step 9b — Wire push-based reconciliation (smee.io + GitHub webhook)
 
-Polling is set to 1h — slow on purpose. Push-based reconciles cover the gap. See [`clusters/homelab/infrastructure/flux-receiver/README.md`](clusters/homelab/infrastructure/flux-receiver/README.md) for the full sequence; abbreviated:
+Polling is set to 1h — slow on purpose. Push-based reconciles cover the gap. See [`infrastructure/flux-receiver/README.md`](infrastructure/flux-receiver/README.md) for the full sequence; abbreviated:
 
 1. `open https://smee.io/new` — copy the channel URL.
 2. Generate a webhook HMAC token: `WEBHOOK_TOKEN=$(openssl rand -hex 32)`
-3. Author + SOPS-encrypt `clusters/homelab/infrastructure/flux-receiver/secret.sops.yaml` (contains `token: $WEBHOOK_TOKEN`). Commit + push.
+3. Author + SOPS-encrypt `infrastructure/flux-receiver/secret.sops.yaml` (contains `token: $WEBHOOK_TOKEN`). Commit + push.
 4. After `Receiver/github-receiver` reaches `Ready=True`, read its webhook path: `kubectl -n flux-system get receiver github-receiver -o jsonpath='{.status.webhookPath}'`.
-5. Author + SOPS-encrypt `clusters/homelab/infrastructure/flux-receiver/smee-config.sops.yaml` (contains `url: <smee-channel>` + `path: <webhook-path>`). Commit + push.
+5. Author + SOPS-encrypt `infrastructure/flux-receiver/smee-config.sops.yaml` (contains `url: <smee-channel>` + `path: <webhook-path>`). Commit + push.
 6. GitHub repo → Settings → Webhooks → Add webhook:
    - Payload URL: smee channel URL
    - Content type: `application/json`
@@ -357,7 +373,7 @@ Grafana values reference `existingSecret: grafana-admin`. Generate it now:
 ```bash
 NS=observability
 ADMIN_PASS=$(openssl rand -base64 32)
-cd clusters/homelab/infrastructure/observability/grafana
+cd infrastructure/observability/grafana
 cat > admin-secret.yaml <<EOF
 apiVersion: v1
 kind: Secret
@@ -372,7 +388,7 @@ mv admin-secret.yaml admin-secret.sops.yaml
 echo "Grafana admin password (back this up): $ADMIN_PASS"
 cd -
 
-git add clusters/homelab/infrastructure/observability/grafana/admin-secret.sops.yaml
+git add infrastructure/observability/grafana/admin-secret.sops.yaml
 git commit -m "feat(grafana): seed admin secret" && git push
 ```
 
@@ -382,14 +398,14 @@ Grafana's HelmRelease will reconcile within seconds (push triggered via the webh
 
 ## Step 9d — Wire TLS-terminating Gateway (Cloudflare + Let's Encrypt)
 
-Replace the `<YOUR_DOMAIN>` placeholders, seed the Cloudflare API token, and create the public DNS records. See [`clusters/homelab/infrastructure/cert-manager/README.md`](clusters/homelab/infrastructure/cert-manager/README.md) for full detail; condensed sequence:
+Replace the `<YOUR_DOMAIN>` placeholders, seed the Cloudflare API token, and create the public DNS records. See [`infrastructure/cert-manager/README.md`](infrastructure/cert-manager/README.md) for full detail; condensed sequence:
 
 ```bash
 # 1. Replace the placeholder with the real Cloudflare-hosted domain
 read -p 'Your Cloudflare domain (e.g. example.com): ' DOMAIN
 read -p 'Contact email for Let's Encrypt: ' EMAIL
 sed -i '' "s|<YOUR_DOMAIN>|$DOMAIN|g" $(grep -rl '<YOUR_DOMAIN>' clusters/)
-sed -i '' "s|ops@$DOMAIN|$EMAIL|g" clusters/homelab/infrastructure/cert-manager/clusterissuer-*.yaml
+sed -i '' "s|ops@$DOMAIN|$EMAIL|g" infrastructure/cert-manager/clusterissuer-*.yaml
 
 # 2. Generate a scoped Cloudflare API token in the Cloudflare dashboard:
 #    My Profile → API Tokens → Create Token → Custom token
@@ -398,7 +414,7 @@ sed -i '' "s|ops@$DOMAIN|$EMAIL|g" clusters/homelab/infrastructure/cert-manager/
 TOKEN=<paste-the-token>
 
 # 3. SOPS-encrypt the token Secret
-cat > clusters/homelab/infrastructure/cert-manager/cloudflare-token.yaml <<EOF
+cat > infrastructure/cert-manager/cloudflare-token.yaml <<EOF
 apiVersion: v1
 kind: Secret
 metadata: { name: cloudflare-api-token, namespace: cert-manager }
@@ -406,8 +422,8 @@ type: Opaque
 stringData:
   api-token: $TOKEN
 EOF
-sops --encrypt --in-place clusters/homelab/infrastructure/cert-manager/cloudflare-token.yaml
-mv clusters/homelab/infrastructure/cert-manager/cloudflare-token.{yaml,sops.yaml}
+sops --encrypt --in-place infrastructure/cert-manager/cloudflare-token.yaml
+mv infrastructure/cert-manager/cloudflare-token.{yaml,sops.yaml}
 
 git add -A clusters/homelab/
 git commit -m "feat(infra): set domain + seed Cloudflare API token"
@@ -426,7 +442,7 @@ kubectl -n gateway get certificate lab-wildcard # Ready=True (DNS-01 takes ~30-9
 kubectl -n gateway get gateway cilium           # PROGRAMMED=True, ADDRESS=192.168.1.200
 ```
 
-If the Certificate is stuck, see `clusters/homelab/infrastructure/cert-manager/README.md` for the troubleshooting commands. Switch to `letsencrypt-staging` first if you're iterating to avoid prod rate limits.
+If the Certificate is stuck, see `infrastructure/cert-manager/README.md` for the troubleshooting commands. Switch to `letsencrypt-staging` first if you're iterating to avoid prod rate limits.
 
 ---
 

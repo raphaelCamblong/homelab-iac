@@ -4,7 +4,7 @@ Movie automation. Receives indexers from Prowlarr, sends downloads to qBit on
 the NAS, imports into `/data/movies/` via hardlink from `/data/downloads/complete/`.
 
 API key is pinned by the env-var override in the Radarr Deployment
-(`clusters/homelab/apps/media-stack/radarr/deployment.yaml`) — first launch
+(`apps/media-stack/radarr/deployment.yaml`) — first launch
 skips the auth wizard.
 
 ## Setup (UI → `https://radarr.lab.<YOUR_DOMAIN>/`)
