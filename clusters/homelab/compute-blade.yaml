@@ -7,10 +7,26 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 5m
-  path: ./clusters/homelab/infrastructure/compute-blade
+  path: ./infrastructure/compute-blade
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
   dependsOn:
     - name: cilium
+  patches:
+    - target:
+        kind: DaemonSet
+        name: compute-blade-agent
+        namespace: compute-blade
+      patch: |
+        apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: compute-blade-agent
+          namespace: compute-blade
+        spec:
+          template:
+            spec:
+              nodeSelector:
+                kubernetes.io/hostname: k3s-server-0

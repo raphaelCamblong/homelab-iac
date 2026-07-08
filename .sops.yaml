@@ -1,14 +1,11 @@
 # .sops.yaml
-# WARNING: replace AGE_PUBLIC_KEY_TODO_REPLACE_ME with the output of `age-keygen`
-# BEFORE encrypting any secret. The placeholder is grep-friendly on purpose so
-# `grep AGE_PUBLIC_KEY_TODO_REPLACE_ME` fails loudly if it's been forgotten.
+# Real age recipient (age1dseuugzmdrtpt7k7vuq5gvns2w678suy3z33up2lzr6xe787vewq3v45q5).
+# Private key lives at ~/.config/sops/age/homelab.agekey (out-of-band backup only,
+# never in git) and in-cluster as the flux-system/sops-age Secret post-bootstrap.
 creation_rules:
-  - path_regex: clusters/.*/secrets/.*\.yaml$
-    encrypted_regex: ^(data|stringData)$
-    age: AGE_PUBLIC_KEY_TODO_REPLACE_ME
-  - path_regex: clusters/.*/.*\.sops\.yaml$
-    encrypted_regex: ^(data|stringData)$
-    age: AGE_PUBLIC_KEY_TODO_REPLACE_ME
   - path_regex: cluster-bootstrap/.*\.sops\.yaml$
     encrypted_regex: ^(cluster|secrets|trustdinfo|certs)$
-    age: AGE_PUBLIC_KEY_TODO_REPLACE_ME
+    age: age1dseuugzmdrtpt7k7vuq5gvns2w678suy3z33up2lzr6xe787vewq3v45q5
+  - path_regex: .*\.sops\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1dseuugzmdrtpt7k7vuq5gvns2w678suy3z33up2lzr6xe787vewq3v45q5

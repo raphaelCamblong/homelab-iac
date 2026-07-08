@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 5m
-  path: ./clusters/homelab/infrastructure/flux-receiver
+  path: ./infrastructure/flux-receiver
   prune: true
   sourceRef:
     kind: GitRepository

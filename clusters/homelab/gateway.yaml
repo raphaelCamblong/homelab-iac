@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 5m
-  path: ./clusters/homelab/infrastructure/gateway
+  path: ./infrastructure/gateway
   prune: true
   sourceRef:
     kind: GitRepository
@@ -20,3 +20,7 @@ spec:
       kind: Gateway
       name: cilium
       namespace: gateway
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

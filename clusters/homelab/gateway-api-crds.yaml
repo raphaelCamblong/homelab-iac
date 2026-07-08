@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 1m
   timeout: 5m
-  path: ./clusters/homelab/infrastructure/gateway-api-crds
+  path: ./infrastructure/gateway-api-crds
   prune: true
   sourceRef:
     kind: GitRepository

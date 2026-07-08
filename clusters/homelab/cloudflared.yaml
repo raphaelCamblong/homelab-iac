@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 5m
-  path: ./clusters/homelab/infrastructure/cloudflared
+  path: ./infrastructure/cloudflared
   prune: true
   sourceRef:
     kind: GitRepository

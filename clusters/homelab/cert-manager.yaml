@@ -7,7 +7,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 10m
-  path: ./clusters/homelab/infrastructure/cert-manager
+  path: ./infrastructure/cert-manager
   prune: true
   sourceRef:
     kind: GitRepository
