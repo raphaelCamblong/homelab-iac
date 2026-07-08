@@ -12,6 +12,9 @@ configMapGenerator:
       - values.yaml
   # Envoy Clusters (gnetId 11021) — per-cluster (HTTPRoute backend) request,
   # connection, and traffic stats. Works directly with cilium-envoy's metrics.
+  # substitute: disabled — dashboard JSONs contain Grafana ${...} template
+  # syntax that breaks Flux's postBuild envsubst (only ${DOMAIN} in the
+  # HTTPRoute needs substitution, never the dashboards).
   - name: dashboard-envoy-clusters
     namespace: observability
     files:
@@ -19,6 +22,8 @@ configMapGenerator:
     options:
       labels:
         grafana_dashboard: "1"
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
   - name: dashboard-hubble-l7-http
     namespace: observability
     files:
@@ -26,6 +31,8 @@ configMapGenerator:
     options:
       labels:
         grafana_dashboard: "1"
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
   - name: dashboard-longhorn
     namespace: observability
     files:
@@ -33,5 +40,7 @@ configMapGenerator:
     options:
       labels:
         grafana_dashboard: "1"
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
 generatorOptions:
   disableNameSuffixHash: true
