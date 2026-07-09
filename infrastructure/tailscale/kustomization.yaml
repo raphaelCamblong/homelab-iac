@@ -4,4 +4,5 @@ resources:
   - namespace.yaml
   - rbac.yaml
   - deployment.yaml
+  - serve-config.yaml
   - tailscale-auth.sops.yaml

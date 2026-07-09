@@ -44,9 +44,19 @@ spec:
               value: "192.168.1.0/24"
             - name: TS_HOSTNAME
               value: homelab
+            # Tailnet-native TCP forwards (see serve-config.yaml).
+            - name: TS_SERVE_CONFIG
+              value: /etc/tailscale/serve.json
+          volumeMounts:
+            - name: serve-config
+              mountPath: /etc/tailscale
+              readOnly: true
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: { drop: [ALL] }
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits:   { cpu: 500m, memory: 128Mi }
+      volumes:
+        - name: serve-config
+          configMap: { name: tailscale-serve }

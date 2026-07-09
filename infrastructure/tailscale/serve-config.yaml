@@ -1,0 +1,19 @@
+# Tailnet-native entry points, immune to LAN subnet collisions (remote networks
+# that also use 192.168.1.0/24 shadow the advertised subnet route — 100.64/10
+# tailnet IPs never collide). Raw TCP passthrough: k3s API TLS and the
+# Gateway's wildcard cert + SNI routing pass through untouched.
+#   homelab:6443 → k3s API      (kubeconfig: tls-server-name required)
+#   homelab:443  → Gateway VIP  (lab.* hosts via /etc/hosts → tailnet IP)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tailscale-serve
+  namespace: tailscale
+data:
+  serve.json: |
+    {
+      "TCP": {
+        "443":  { "TCPForward": "${GATEWAY_VIP}:443" },
+        "6443": { "TCPForward": "${K8S_API_HOST}:6443" }
+      }
+    }
