@@ -14,6 +14,26 @@ spec:
     name: flux-system
   dependsOn:
     - name: cilium
+  # 2-node cluster: the base runs 2 controller replicas, but the controller is
+  # hostNetwork, so two replicas on one node collide on the liveness port
+  # (127.0.0.1:29652 "address already in use") → permanent CrashLoop. On 2 nodes
+  # any single-node blip co-locates them. NFS-CSI is provisioning-only here
+  # (Longhorn is primary storage), so one replica is plenty. Base stays 2 for
+  # the future 3-node Talos cluster where replicas spread across distinct nodes.
+  patches:
+    - patch: |
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: csi-driver-nfs
+          namespace: csi-driver-nfs
+        spec:
+          values:
+            controller:
+              replicas: 1
+      target:
+        kind: HelmRelease
+        name: csi-driver-nfs
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
