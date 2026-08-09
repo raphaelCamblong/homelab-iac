@@ -1,0 +1,34 @@
+# The VPN socket itself: a LAN IP from the Cilium LB pool, L2-announced on
+# eth0. Point the router's UDP 51820 port-forward at ${WG_LB_IP} — the IP is
+# pinned so the forward never has to change.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireguard
+  namespace: wireguard
+  annotations:
+    io.cilium/lb-ipam-ips: "${WG_LB_IP}"
+spec:
+  type: LoadBalancer
+  selector: { app.kubernetes.io/name: wireguard }
+  ports:
+    - name: wireguard
+      port: 51820
+      targetPort: wireguard
+      protocol: UDP
+---
+# Web UI, reached through the Gateway (LAN-only, like every other lab.* host)
+# rather than published on the LoadBalancer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireguard-ui
+  namespace: wireguard
+spec:
+  type: ClusterIP
+  selector: { app.kubernetes.io/name: wireguard }
+  ports:
+    - name: http
+      port: 51821
+      targetPort: http
+      protocol: TCP

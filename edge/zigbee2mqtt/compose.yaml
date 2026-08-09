@@ -1,0 +1,38 @@
+# Zigbee2MQTT + Mosquitto on the edge Pi (192.168.1.30, DietPi).
+#
+# NOT Flux-managed — this host isn't part of the k8s cluster, and it can't be:
+# the SONOFF Zigbee dongle is physically plugged into it. Kept in git for repro,
+# same rule as nas/. Deploy with:
+#   scp compose.yaml dietpi@192.168.1.30:~/zigbee2mqtt/
+#   ssh dietpi@192.168.1.30 'cd ~/zigbee2mqtt && docker compose up -d'
+#
+# Data lives on the host at /root/zigbee2mqtt/data and /root/mosquitto/* —
+# root-owned bind mounts inherited from the old Portainer stack. Left in place
+# deliberately: moving them buys nothing and risks the pairing database.
+services:
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt
+    restart: unless-stopped
+    depends_on: [mqtt]
+    ports:
+      - "8080:8080"          # web UI — LAN only
+    volumes:
+      - /root/zigbee2mqtt/data:/app/data
+      - /run/udev:/run/udev:ro
+    devices:
+      # by-id, not /dev/ttyACM0: the ACM number can shift on reboot or replug,
+      # the by-id path is stable per dongle.
+      - /dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231220103017-if00:/dev/ttyACM0
+    environment:
+      TZ: Europe/Paris
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    restart: unless-stopped
+    command: /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf
+    ports:
+      - "1883:1883"
+    volumes:
+      - /root/mosquitto/config:/mosquitto/config
+      - /root/mosquitto/data:/mosquitto/data
+      - /root/mosquitto/log:/mosquitto/log
