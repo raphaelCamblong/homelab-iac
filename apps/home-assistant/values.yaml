@@ -45,9 +45,16 @@ resources:
   requests: { cpu: 100m, memory: 512Mi }
   limits:   { cpu: 2, memory: 2Gi }
 
-# HA is slow to start on a Pi (first boot builds the DB and pulls integrations).
+# HA is slow to start on a Pi (first boot builds the DB and pulls integrations),
+# so give it up to 5 minutes before the liveness probe starts killing it.
+# The chart passes this block through verbatim — it needs a real handler, not
+# just timings, or the StatefulSet is rejected outright.
 startupProbe:
-  enabled: true
+  httpGet:
+    path: /
+    port: http
+    scheme: HTTP
   initialDelaySeconds: 30
   periodSeconds: 10
+  timeoutSeconds: 3
   failureThreshold: 30
