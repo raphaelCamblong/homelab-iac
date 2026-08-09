@@ -8,7 +8,8 @@ data:
   K8S_API_HOST: 192.168.1.41
   GATEWAY_VIP: 192.168.1.200
   # WireGuard: LB IP is what the router port-forwards UDP 51820 to; WG_HOST is
-  # what peers dial (public IP — swap for a DNS-only A record to survive ISP
-  # IP rotation, see infrastructure/wireguard/README.md).
+  # what peers dial. Deliberately a DNS name, never a literal public IP: the
+  # ISP rotates it (already did once), and this repo is public. The record is
+  # A / DNS-only / TTL 60 — WireGuard is UDP, so it cannot be Cloudflare-proxied.
   WG_LB_IP: 192.168.1.201
-  WG_HOST: 90.61.204.229
+  WG_HOST: vpn.raphlamenace.xyz
