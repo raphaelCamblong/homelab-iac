@@ -12,4 +12,8 @@ data:
   # ISP rotates it (already did once), and this repo is public. The record is
   # A / DNS-only / TTL 60 — WireGuard is UDP, so it cannot be Cloudflare-proxied.
   WG_LB_IP: 192.168.1.201
+  # Edge Pi (DietPi): hosts zigbee2mqtt + mosquitto because the Zigbee dongle is
+  # physically attached to it. Published in-cluster via selector-less
+  # Service + EndpointSlice (see apps/home-assistant/edge-backends/).
+  EDGE_HOST: 192.168.1.30
   WG_HOST: vpn.raphlamenace.xyz

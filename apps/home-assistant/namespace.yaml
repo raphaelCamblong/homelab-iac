@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-assistant
+  # baseline: the HA image runs as root and writes to /config, but needs no
+  # host namespaces or privileges in this setup (Zigbee arrives over MQTT from
+  # the edge Pi — no USB device is passed through here).
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline

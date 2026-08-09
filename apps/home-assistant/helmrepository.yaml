@@ -1,0 +1,11 @@
+# Home Assistant publishes no official Helm chart (only container images and the
+# HAOS appliance), so this is the best-maintained community chart — it tracks
+# HA releases closely and supports Gateway API HTTPRoute natively.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: home-assistant
+  namespace: flux-system
+spec:
+  interval: 24h
+  url: https://pajikos.github.io/home-assistant-helm-chart/

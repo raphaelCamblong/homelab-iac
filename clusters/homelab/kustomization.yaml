@@ -21,6 +21,7 @@ resources:
   # backup.yaml: Talos-only (etcd snapshots), re-add on Talos rollout
   - flux-receiver.yaml
   - media-stack.yaml
+  - home-assistant.yaml
   - cloudflared.yaml
   - tailscale.yaml
   - wireguard.yaml

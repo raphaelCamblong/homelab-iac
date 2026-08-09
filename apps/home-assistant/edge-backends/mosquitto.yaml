@@ -1,0 +1,28 @@
+# Mosquitto also lives on the edge Pi. Publishing it as an in-cluster Service
+# gives Home Assistant a stable DNS name for the MQTT broker
+# (mosquitto-edge.home-assistant.svc.cluster.local:1883) instead of a hardcoded
+# IP in the integration config, and makes the flow visible in Hubble.
+# No HTTPRoute: MQTT is raw TCP, not HTTP — it is reached in-cluster only.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mosquitto-edge
+  namespace: home-assistant
+spec:
+  type: ClusterIP
+  ports:
+    - { name: mqtt, port: 1883, targetPort: 1883, protocol: TCP }
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: mosquitto-edge-1
+  namespace: home-assistant
+  labels:
+    kubernetes.io/service-name: mosquitto-edge
+addressType: IPv4
+ports:
+  - { name: mqtt, port: 1883, protocol: TCP }
+endpoints:
+  - addresses: ["${EDGE_HOST}"]
+    conditions: { ready: true }

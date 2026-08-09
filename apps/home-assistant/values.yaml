@@ -1,0 +1,53 @@
+env:
+  - name: TZ
+    value: Europe/Paris
+
+# /config holds the whole HA state: config, the SQLite recorder DB, and the
+# secrets HA generates at onboarding. Losing it means re-onboarding from zero.
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: longhorn
+  accessMode: ReadWriteOnce
+
+# Seeds configuration.yaml on first boot. The http block is the part that
+# matters: behind the Gateway, HA rejects every proxied request with
+# "400 Bad Request" unless it trusts the proxy's source range.
+# forceInit stays false so hand edits in the UI are never overwritten.
+configuration:
+  enabled: true
+  forceInit: false
+  trusted_proxies:
+    - 10.42.0.0/16   # pod CIDR — the Gateway (cilium-envoy) fronts HA from here
+    - 10.43.0.0/16   # service CIDR
+
+# Chart-native Gateway API route; no hand-written HTTPRoute needed.
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: cilium
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - "ha.${DOMAIN}"
+
+service:
+  type: ClusterIP
+  port: 8123
+
+# ponytail: hostNetwork stays OFF. It's only needed for mDNS/SSDP auto-discovery
+# of LAN devices (Sonos, Chromecast, HomeKit). Zigbee arrives over MQTT, which
+# doesn't care. Turn it on only if you add an integration that truly needs LAN
+# broadcast — it costs the pod its own netns and complicates the HTTPRoute.
+hostNetwork: false
+
+resources:
+  requests: { cpu: 100m, memory: 512Mi }
+  limits:   { cpu: 2, memory: 2Gi }
+
+# HA is slow to start on a Pi (first boot builds the DB and pulls integrations).
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 30
