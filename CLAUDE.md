@@ -38,6 +38,12 @@ clusters/homelab/         # THIN per-cluster layer for the k3s prod cluster.
 docs/media-stack/SPEC.md  # Storage layout, hardlink contract, NAS vs cluster split
 nas/                      # TrueNAS Custom App compose configs (Jellyfin, gluetun+qbit)
                           # Not Flux-managed — NAS isn't k8s. Kept here for repro.
+edge/                     # Compose configs for the edge Pi 192.168.1.30 (DietPi):
+                          # zigbee2mqtt + mosquitto. Same rule as nas/ — not
+                          # Flux-managed, kept for repro. That host can't join the
+                          # cluster workload-wise: the Zigbee dongle is physically
+                          # plugged into it (/dev/serial/by-id/...SONOFF...).
+                          # Deploy: ssh dietpi@192.168.1.30, docker compose up -d.
 ```
 
 When the Talos cluster lands, it becomes `clusters/talos-homelab/` (or similar) — a second thin layer next to `clusters/homelab/`, consuming the same `infrastructure/` and `apps/` bases with its own patches/vars.
@@ -54,22 +60,28 @@ The two bootstrap paths (this k3s cluster today, Talos later) are linked by `.so
 
 ```
 gateway-api-crds → cilium → ┬→ cert-manager → gateway → headlamp / observability / cloudflared / media-stack
-                            ├→ longhorn → observability, media-stack
+                            ├→ longhorn → observability, media-stack, wireguard
                             ├→ csi-driver-nfs → media-stack
                             ├→ compute-blade
+                            ├→ tailscale
+                            ├→ flux-receiver
                             └→ prometheus-operator-crds → vm-stack → victoria-logs → grafana, alloy
+
+wireguard dependsOn longhorn (config PVC) + gateway (HTTPRoute parent).
 ```
 
 Anything that needs `monitoring.coreos.com` CRDs must `dependsOn: prometheus-operator-crds` — the `vm-stack` chart's `victoria-metrics-operator.prometheus-operator-crds.enabled` subchart toggle was found to silently no-op in vm-stack chart 0.78.0, so the CRDs are installed standalone.
 
 Notes on the graph vs the aggregator (`clusters/homelab/kustomization.yaml`):
 - `backup.yaml` exists in the repo (etcd-snapshot CronJob) but is **not** in the aggregator — it's Talos-only (`talosctl` etcd snapshots don't apply to k3s) and stays inactive until the Talos rollout re-adds it.
-- `tailscale.yaml` is commented out in the aggregator — needs an authkey Secret seeded first; re-enable once `tailscale-auth.sops.yaml` exists.
+- `tailscale.yaml` is live (authkey seeded as `tailscale-auth.sops.yaml`). The node is `homelab` on the tailnet, advertising `192.168.1.0/24`, and `TS_SERVE_CONFIG` forwards tailnet `:443` → Gateway VIP and `:6443` → k3s API, so remote access survives networks that also use `192.168.1.0/24` (the advertised route gets shadowed there; tailnet 100.64/10 addresses never collide).
+- `flux-receiver.yaml` is live again but relay-free: a `Receiver` + HMAC token only. GitHub posts to the cloudflared tunnel hostname `flux-webhook-access.raphlamenace.xyz`, which forwards in-cluster to `webhook-receiver.flux-system.svc`. The earlier smee.io relay is gone for good (image unpullable on arm64). Git poll is the 10m fallback.
+- `wireguard.yaml` (wg-easy) is the self-hosted VPN, replacing a hand-run container on the edge Pi. See `infrastructure/wireguard/README.md`.
 - `flux-receiver` was removed entirely (not just disabled): the smee-client image wasn't pullable on arm64, the `lab.*` hosts are LAN-only so GitHub couldn't reach a Receiver anyway, and the 1m `GitRepository` poll interval is fast enough without push-based reconcile. See git history if sub-minute sync ever becomes worth revisiting.
 
 ## `infrastructure/` vs `apps/` split
 
-- **`infrastructure/`** — platform plumbing the cluster needs to function or to host workloads: CNI (cilium), gateway-api-crds, gateway, cert-manager, longhorn, csi-driver-nfs, observability stack (vm-stack/victoria-logs/alloy/grafana/prometheus-operator-crds), compute-blade, headlamp (admin), cloudflared (ingress tunnel), tailscale (subnet router), backup (Talos-only, dormant).
+- **`infrastructure/`** — platform plumbing the cluster needs to function or to host workloads: CNI (cilium), gateway-api-crds, gateway, cert-manager, longhorn, csi-driver-nfs, observability stack (vm-stack/victoria-logs/alloy/grafana/prometheus-operator-crds), compute-blade, headlamp (admin), cloudflared (ingress tunnel), tailscale (subnet router + tailnet-native 443/6443 forwards), wireguard (self-hosted VPN + Cloudflare DDNS CronJob), flux-receiver (webhook-driven git sync), backup (Talos-only, dormant).
 - **`apps/`** — user-facing workloads that consume the infrastructure: media-stack (Prowlarr, Radarr, Bazarr, Jellyseerr, Recyclarr) currently; future Vaultwarden, n8n, etc. would land here.
 
 When adding a new component, ask: does the cluster need this to host other things, or is it the thing being hosted? The former is infrastructure, the latter is apps.
@@ -131,7 +143,10 @@ For the Talos rollout, every command is in `talos-cluster-PLAN.md` Steps 1–9 �
 - **`HelmRepository` resources must stay in `flux-system`.** A top-level `namespace: foo` in a kustomization clobbers ALL resources including HelmRepositories, breaking `HelmRelease.sourceRef`.
 - **Grafana dashboard ConfigMaps carry `kustomize.toolkit.fluxcd.io/substitute: disabled`** (see `infrastructure/observability/grafana/kustomization.yaml`) — dashboard JSON bodies contain their own Grafana `${...}` template-variable syntax, which Flux's envsubst would otherwise try (and fail) to resolve. Any new dashboard `configMapGenerator` needs the same annotation.
 - **Drift self-heals**, but not instantly: on the Kustomization's `interval` (1h for most components here) or on `flux reconcile kustomization <name> --with-source` if you don't want to wait.
-- **Undefined `${...}` vars are left alone by `postBuild.substituteFrom`** (Flux only substitutes what the referenced ConfigMap/Secret defines) — but right now `cluster-vars` only defines `DOMAIN`. Adding a new `${FOO}` reference in a base does nothing until `FOO` is added to `clusters/homelab/cluster-vars.yaml` (and any other cluster's `cluster-vars.yaml` that consumes the same base).
+- **Undefined `${...}` vars are left alone by `postBuild.substituteFrom`** (Flux only substitutes what the referenced ConfigMap/Secret defines). `cluster-vars` currently defines `DOMAIN`, `K8S_API_HOST`, `GATEWAY_VIP`, `WG_LB_IP`, `WG_HOST`. Adding a new `${FOO}` reference in a base does nothing until `FOO` is added to `clusters/homelab/cluster-vars.yaml` (and any other cluster's `cluster-vars.yaml` that consumes the same base).
+- **The Orange Livebox can only port-forward to a device it learned via DHCP** — a Cilium L2-announced LoadBalancer VIP (e.g. `192.168.1.201`) is not one and never shows up in its device list. So WireGuard's router rule targets a *node* on a **pinned** `nodePort: 31820` (external UDP 51820 → `192.168.1.41:31820`); `externalTrafficPolicy: Cluster` means any node accepts it regardless of where the pod runs. Pin the nodePort for anything the router forwards to — an auto-assigned one changes on Service recreation and breaks the rule silently, months later.
+- **Never put a public IP in this repo — it's public.** `WG_HOST` is a DNS name (`vpn.raphlamenace.xyz`, A / DNS-only / TTL 60), kept current by the `cloudflare-ddns` CronJob in `infrastructure/wireguard/`. The ISP does rotate the address (it changed mid-setup once). WireGuard is UDP, so that record can never be Cloudflare-proxied (orange cloud = broken tunnel).
+- **No plaintext secret ever lands in git** — check with a scan for any non-RFC1918 IPv4 before committing infra that embeds addresses.
 
 ## Secrets
 
