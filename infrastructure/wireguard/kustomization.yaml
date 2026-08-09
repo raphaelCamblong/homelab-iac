@@ -3,7 +3,9 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - admin-secret.sops.yaml
+  - cloudflare-token.sops.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml
   - httproute.yaml
+  - ddns-cronjob.yaml

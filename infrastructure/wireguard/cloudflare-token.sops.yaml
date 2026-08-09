@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: cloudflare-ddns
+    namespace: wireguard
+type: Opaque
+stringData:
+    api-token: ENC[AES256_GCM,data:8tGIeP0fc5d0AjkDoNU+z+CQQacP1OJAVzpMBoFK0nxqUPs+Zcl1ssU5sHHRfq8Pn8sgPZg=,iv:dcCH848kToZ5EoHA3ftud8+YShzoVjVicR0OlTt57ng=,tag:BcD9bTx7OjGp2SGc7aFgRQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBLaXMvYkl1ZC9hSXN4R0tT
+            NkN1RXNhSHBJT0dJTkROcGRFaG1ZSGN4QlFRCk93dUF0TXJuUFJobVVXUkhFMFZv
+            S3gwSmJ2bEVKRnFuZUVKbSthVnZ4VFUKLS0tIHE1OWlnTFZTaGtpbmZUT1E3Zzdz
+            b2VNZU93QW5tNHVyaUxhYXhJcUpsTHcKLwz9rdmSpI2gEyXWA7ALjXDSo+eQLdG2
+            6ffLVob1Rf8NEUASmIjXjp9HLqiHuoTiVGhMJxcoDWkKCtvxXpONZw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1dseuugzmdrtpt7k7vuq5gvns2w678suy3z33up2lzr6xe787vewq3v45q5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-09T16:26:33Z"
+    mac: ENC[AES256_GCM,data:5k+SUUbgbrcVr0zCUwg+/n23vXS9IcAPeeT2FQKWWpb5ELY2MZFQjavJut/qOoiv3g9jUGtlVxLILu5NqanW5xMgLFpWGsWViGh0NWHNL1DLP9icavN92zYrr3P1U+0/4PyDsrmanB/DXMGE5QJNdTFXmKY3IWQLrJm1eou/JTE=,iv:VuXE8sdJbNUwQ1PzbDaPKkgwuK/1i0+kA6HpSAEZNxg=,tag:TFhzbDhb1X1i9lzHxmxPKw==,type:str]
+    version: 3.13.3

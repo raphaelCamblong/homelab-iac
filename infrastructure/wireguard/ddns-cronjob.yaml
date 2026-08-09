@@ -1,0 +1,90 @@
+# Keeps ${WG_HOST}'s A record pointing at the current public IP, so an ISP
+# rotation doesn't strand every WireGuard client config.
+#
+# ponytail: stdlib-only Python in a ConfigMap instead of a third-party DDNS
+# image — the whole job is "read IP, compare, PATCH if different", and this way
+# there's no extra image to trust or track. IPv4 only (the LAN is v4-only);
+# add an AAAA branch here if that ever changes.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ddns-script
+  namespace: wireguard
+  annotations:
+    # The script contains no ${...} Flux vars, but it does contain shell-ish
+    # syntax; keep envsubst away from it entirely.
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+data:
+  ddns.py: |
+    import ipaddress, json, os, urllib.request
+
+    TOKEN, ZONE, RECORD = os.environ["CF_API_TOKEN"], os.environ["CF_ZONE"], os.environ["CF_RECORD"]
+    API = "https://api.cloudflare.com/client/v4"
+
+    def cf(path, method="GET", body=None):
+        req = urllib.request.Request(
+            API + path, method=method,
+            headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"},
+            data=json.dumps(body).encode() if body else None)
+        with urllib.request.urlopen(req, timeout=20) as r:
+            out = json.load(r)
+        if not out.get("success"):
+            raise SystemExit("cloudflare API error: %s" % out.get("errors"))
+        return out
+
+    ip = urllib.request.urlopen("https://api.ipify.org", timeout=20).read().decode().strip()
+    ipaddress.IPv4Address(ip)  # refuse to publish garbage if the IP service misbehaves
+
+    zone = cf("/zones?name=" + ZONE)["result"][0]["id"]
+    recs = cf("/zones/%s/dns_records?type=A&name=%s" % (zone, RECORD))["result"]
+    if not recs:
+        raise SystemExit("no A record for %s — create it first" % RECORD)
+    rec = recs[0]
+
+    if rec["content"] == ip:
+        print("unchanged: %s -> %s" % (RECORD, ip))
+    else:
+        # proxied stays false: WireGuard is UDP and cannot be Cloudflare-proxied.
+        cf("/zones/%s/dns_records/%s" % (zone, rec["id"]), "PATCH",
+           {"type": "A", "name": RECORD, "content": ip, "proxied": False, "ttl": 60})
+        print("updated: %s %s -> %s" % (RECORD, rec["content"], ip))
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cloudflare-ddns
+  namespace: wireguard
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: ddns
+              image: python:3.12-alpine
+              command: ["python", "/script/ddns.py"]
+              env:
+                - name: CF_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: cloudflare-ddns
+                      key: api-token
+                - name: CF_ZONE
+                  value: raphlamenace.xyz
+                - name: CF_RECORD
+                  value: "${WG_HOST}"
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+              resources:
+                requests: { cpu: 10m, memory: 32Mi }
+                limits:   { cpu: 200m, memory: 128Mi }
+          volumes:
+            - name: script
+              configMap: { name: ddns-script }
