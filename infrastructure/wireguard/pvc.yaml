@@ -1,0 +1,18 @@
+# Peer database (wg-easy v15 keeps its config + keys in /etc/wireguard).
+# ponytail: 1Gi is far more than needed (the DB is KBs) — it's Longhorn's
+# practical floor and costs nothing on an NVMe-backed pool.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wireguard-config
+  namespace: wireguard
+  annotations:
+    # Peer keys live here: never prune this PVC on Kustomization deletion,
+    # or every client config is lost and all devices must be re-enrolled.
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 1Gi
