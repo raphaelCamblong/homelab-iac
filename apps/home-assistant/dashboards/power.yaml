@@ -1,0 +1,171 @@
+# Dual-clamp energy meter (Zigbee 0xa4c13832d4f27d43, Tuya PJ-1203A style).
+# Channel A and B are measured independently; each reports direction
+# (consuming / producing), so this dashboard leads with signed power and
+# direction rather than a single "consumption" number that would be wrong
+# whenever the clamps read export.
+#
+# Entity ids are the raw IEEE address because the device is unnamed in
+# Zigbee2MQTT. Renaming it there (friendly_name) regenerates these ids and
+# breaks this file — rename first, then update the ids here in one pass.
+title: Énergie
+views:
+  - title: Compteur
+    path: compteur
+    icon: mdi:flash
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Puissance instantanée
+            heading_style: title
+            icon: mdi:speedometer
+
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_power_3
+            name: Total (A+B)
+            icon: mdi:home-lightning-bolt
+            hide_state: false
+            vertical: false
+            # Negative = exporting. The colour follows the state so a glance
+            # tells you which way energy is moving.
+            state_content: state
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_power
+            name: Voie A
+            icon: mdi:numeric-1-circle
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_power_2
+            name: Voie B
+            icon: mdi:numeric-2-circle
+
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_energy_flow_a
+            name: Sens voie A
+            icon: mdi:transmission-tower
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_energy_flow_b
+            name: Sens voie B
+            icon: mdi:transmission-tower
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Historique
+            heading_style: title
+            icon: mdi:chart-line
+
+          # One graph, both channels + total: comparing them on a shared axis
+          # is the whole point — separate graphs would hide the correlation.
+          - type: history-graph
+            hours_to_show: 24
+            title: Puissance sur 24 h
+            entities:
+              - entity: sensor.0xa4c13832d4f27d43_power
+                name: Voie A
+              - entity: sensor.0xa4c13832d4f27d43_power_2
+                name: Voie B
+              - entity: sensor.0xa4c13832d4f27d43_power_3
+                name: Total
+
+          - type: statistics-graph
+            title: Énergie par jour (30 j)
+            days_to_show: 30
+            period: day
+            stat_types:
+              - state
+            chart_type: bar
+            entities:
+              - entity: sensor.0xa4c13832d4f27d43_energy
+                name: Consommée A
+              - entity: sensor.0xa4c13832d4f27d43_energy_2
+                name: Consommée B
+              - entity: sensor.0xa4c13832d4f27d43_energy_3
+                name: Produite A
+              - entity: sensor.0xa4c13832d4f27d43_energy_4
+                name: Produite B
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Compteurs cumulés
+            heading_style: title
+            icon: mdi:counter
+
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_energy
+            name: Consommée A
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_energy_2
+            name: Consommée B
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_energy_3
+            name: Produite A
+          - type: tile
+            entity: sensor.0xa4c13832d4f27d43_energy_4
+            name: Produite B
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Réseau & diagnostic
+            heading_style: title
+            icon: mdi:tune
+
+          # Voltage/frequency/power-factor matter for spotting a bad clamp or a
+          # sagging supply; grouped away from the numbers you read daily.
+          - type: entities
+            entities:
+              - entity: sensor.0xa4c13832d4f27d43_voltage
+                name: Tension
+              - entity: sensor.0xa4c13832d4f27d43_frequency
+                name: Fréquence
+              - entity: sensor.0xa4c13832d4f27d43_current
+                name: Courant A
+              - entity: sensor.0xa4c13832d4f27d43_current_2
+                name: Courant B
+              - entity: sensor.0xa4c13832d4f27d43_power_factor_a
+                name: Facteur de puissance A
+              - entity: sensor.0xa4c13832d4f27d43_power_factor_b
+                name: Facteur de puissance B
+              - entity: sensor.0xa4c13832d4f27d43_linkquality
+                name: Qualité du lien Zigbee
+
+  # Everything else Zigbee2MQTT exposes, so the sidebar has one honest place
+  # for the rest of the house without inventing structure for it yet.
+  - title: Maison
+    path: maison
+    icon: mdi:home
+    type: sections
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Pompe piscine
+            heading_style: title
+            icon: mdi:pool
+          - type: tile
+            entity: sensor.prise_pompe_piscine_power
+            name: Puissance
+          - type: tile
+            entity: sensor.prise_pompe_piscine_energy
+            name: Énergie
+          - type: tile
+            entity: sensor.prise_pompe_piscine_voltage
+            name: Tension
+          - type: tile
+            entity: sensor.prise_pompe_piscine_current
+            name: Courant
+      - type: grid
+        cards:
+          - type: heading
+            heading: Cuisine
+            heading_style: title
+            icon: mdi:thermometer
+          - type: tile
+            entity: light.philips_hue_led_e14
+            name: Hue E14
+          - type: tile
+            entity: binary_sensor.zigbee2mqtt_bridge_connection_state
+            name: Bridge Zigbee2MQTT

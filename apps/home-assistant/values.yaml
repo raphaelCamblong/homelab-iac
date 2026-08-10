@@ -20,6 +20,56 @@ configuration:
   trusted_proxies:
     - 10.42.0.0/16   # pod CIDR — the Gateway (cilium-envoy) fronts HA from here
     - 10.43.0.0/16   # service CIDR
+  # Overrides the chart default only to append the `lovelace:` block, which
+  # registers the git-managed YAML dashboard mounted at /config/dashboards.
+  # Keep the rest identical to the chart's template, or a fresh install loses
+  # default_config / themes / the automation includes.
+  templateConfig: |-
+    # Loads default set of integrations. Do not remove.
+    default_config:
+
+    {{- if .Values.serviceMonitor.enabled }}
+    prometheus:
+    {{- end }}
+
+    {{- if or .Values.ingress.enabled .Values.ingress.external .Values.httpRoute.enabled }}
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        {{- range .Values.configuration.trusted_proxies }}
+        - {{ . }}
+        {{- end }}
+    {{- end}}
+    # Load frontend themes from the themes folder
+    frontend:
+      themes: !include_dir_merge_named themes
+
+    # UI-created dashboards keep working (mode: storage); the YAML one below is
+    # read-only in the UI and versioned in git instead.
+    lovelace:
+      mode: storage
+      dashboards:
+        energie-yaml:
+          mode: yaml
+          title: Énergie
+          icon: mdi:flash
+          show_in_sidebar: true
+          filename: dashboards/power.yaml
+
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+
+# The dashboard file itself, mounted read-only from a ConfigMap so it stays
+# git-managed rather than living only in the PVC.
+additionalVolumes:
+  - name: dashboards
+    configMap:
+      name: home-assistant-dashboards
+additionalMounts:
+  - name: dashboards
+    mountPath: /config/dashboards
+    readOnly: true
 
 # Chart-native Gateway API route; no hand-written HTTPRoute needed.
 httpRoute:

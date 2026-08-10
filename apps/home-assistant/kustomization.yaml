@@ -11,5 +11,14 @@ configMapGenerator:
     namespace: home-assistant
     files:
       - values.yaml
+  # Mounted at /config/dashboards. substitute: disabled — dashboard YAML can
+  # carry Jinja/JS templating that Flux's envsubst must not touch.
+  - name: home-assistant-dashboards
+    namespace: home-assistant
+    files:
+      - dashboards/power.yaml
+    options:
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
 generatorOptions:
   disableNameSuffixHash: true
