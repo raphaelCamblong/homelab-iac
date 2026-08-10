@@ -1,14 +1,11 @@
 # The VPN socket itself: a LAN IP from the Cilium LB pool (${WG_LB_IP}),
 # L2-announced on eth0 — use that from inside the LAN.
 #
-# The nodePort is pinned because the Orange Livebox can only port-forward to a
-# device it knows from DHCP, and an L2-announced VIP is not a DHCP device — so
-# the router rule targets a node (192.168.1.41) on this port instead:
-#   external UDP 51820  ->  192.168.1.41 : 31820
-# externalTrafficPolicy stays Cluster, so any node accepts the packet and
-# forwards it to wherever the pod actually runs. Left unpinned, Kubernetes would
-# assign a random port that changes if the Service is ever recreated, silently
-# breaking the router rule.
+# The router forwards public UDP 51820 straight to this VIP, so the pod is free
+# to run on either node — Cilium announces the VIP from wherever it lands.
+# (An earlier revision pinned a nodePort + hostPort because the Livebox appeared
+# to only accept devices from its DHCP list; it accepts a raw IP, so that
+# scaffolding is gone.)
 apiVersion: v1
 kind: Service
 metadata:
@@ -24,7 +21,6 @@ spec:
     - name: wireguard
       port: 51820
       targetPort: wireguard
-      nodePort: 31820
       protocol: UDP
 ---
 # Web UI, reached through the Gateway (LAN-only, like every other lab.* host)

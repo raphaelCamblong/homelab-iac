@@ -16,11 +16,6 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: wireguard }
     spec:
-      # Pinned to the server node so the router's port-forward always has one
-      # fixed target device. Needed because hostPort (below) binds on whichever
-      # node the pod happens to run on, and the Livebox rule names a device.
-      nodeSelector:
-        kubernetes.io/hostname: k3s-server-0
       initContainers:
         # ip_forward/src_valid_mark are unsafe sysctls to kubelet, so they can't
         # go in pod securityContext without a node flag. Setting them here
@@ -76,11 +71,7 @@ spec:
             - name: INSECURE
               value: "true"
           ports:
-            # hostPort so the node itself listens on 51820: the Livebox can then
-            # forward 51820 -> 51820 with no port translation, which some
-            # firmware can't do. The Service's nodePort 31820 keeps working too,
-            # so either rule form is valid as long as it targets k3s-server-0.
-            - { name: wireguard, containerPort: 51820, hostPort: 51820, protocol: UDP }
+            - { name: wireguard, containerPort: 51820, protocol: UDP }
             - { name: http, containerPort: 51821, protocol: TCP }
           volumeMounts:
             - name: config
