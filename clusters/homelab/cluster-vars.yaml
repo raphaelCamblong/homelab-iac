@@ -15,5 +15,5 @@ data:
   # Edge Pi (DietPi): hosts zigbee2mqtt + mosquitto because the Zigbee dongle is
   # physically attached to it. Published in-cluster via selector-less
   # Service + EndpointSlice (see apps/home-assistant/edge-backends/).
-  EDGE_HOST: 192.168.1.30
+  EDGE_HOST: 192.168.1.251
   WG_HOST: vpn.raphlamenace.xyz

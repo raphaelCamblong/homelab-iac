@@ -1,10 +1,10 @@
-# Zigbee2MQTT + Mosquitto on the edge Pi (192.168.1.30, DietPi).
+# Zigbee2MQTT + Mosquitto on the edge Pi (192.168.1.251, DietPi).
 #
 # NOT Flux-managed — this host isn't part of the k8s cluster, and it can't be:
 # the SONOFF Zigbee dongle is physically plugged into it. Kept in git for repro,
 # same rule as nas/. Deploy with:
-#   scp compose.yaml dietpi@192.168.1.30:~/zigbee2mqtt/
-#   ssh dietpi@192.168.1.30 'cd ~/zigbee2mqtt && docker compose up -d'
+#   scp compose.yaml dietpi@192.168.1.251:~/zigbee2mqtt/
+#   ssh dietpi@192.168.1.251 'cd ~/zigbee2mqtt && docker compose up -d'
 #
 # Data lives on the host at /root/zigbee2mqtt/data and /root/mosquitto/* —
 # root-owned bind mounts inherited from the old Portainer stack. Left in place

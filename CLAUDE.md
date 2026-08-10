@@ -38,12 +38,12 @@ clusters/homelab/         # THIN per-cluster layer for the k3s prod cluster.
 docs/media-stack/SPEC.md  # Storage layout, hardlink contract, NAS vs cluster split
 nas/                      # TrueNAS Custom App compose configs (Jellyfin, gluetun+qbit)
                           # Not Flux-managed — NAS isn't k8s. Kept here for repro.
-edge/                     # Compose configs for the edge Pi 192.168.1.30 (DietPi):
+edge/                     # Compose configs for the edge Pi 192.168.1.251 (DietPi):
                           # zigbee2mqtt + mosquitto. Same rule as nas/ — not
                           # Flux-managed, kept for repro. That host can't join the
                           # cluster workload-wise: the Zigbee dongle is physically
                           # plugged into it (/dev/serial/by-id/...SONOFF...).
-                          # Deploy: ssh dietpi@192.168.1.30, docker compose up -d.
+                          # Deploy: ssh dietpi@192.168.1.251, docker compose up -d.
 ```
 
 When the Talos cluster lands, it becomes `clusters/talos-homelab/` (or similar) — a second thin layer next to `clusters/homelab/`, consuming the same `infrastructure/` and `apps/` bases with its own patches/vars.

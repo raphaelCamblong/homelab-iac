@@ -1,7 +1,7 @@
 # wireguard (wg-easy)
 
 Self-hosted WireGuard VPN with a web UI, replacing the wg-easy that used to run
-by hand on the edge Pi (192.168.1.30).
+by hand on the edge Pi (192.168.1.251).
 
 - **VPN socket**: LoadBalancer UDP 51820 on `${WG_LB_IP}` (Cilium LB-IPAM, L2
   announced on eth0). The router forwards public UDP 51820 → that IP.
