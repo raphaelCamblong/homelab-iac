@@ -25,6 +25,14 @@ spec:
     - { apiVersion: apps/v1,                kind: Deployment, name: radarr,      namespace: media }
     - { apiVersion: apps/v1,                kind: Deployment, name: bazarr,      namespace: media }
     - { apiVersion: apps/v1,                kind: Deployment, name: jellyseerr,  namespace: media }
+  # TEMPORARY (2026-09-30): the NAS is down (hardware), so /data can't mount.
+  # Parks everything that needs it so Flux stays green and a real media-stack
+  # failure isn't hidden behind this one. Delete this block once the NAS is back.
+  patches:
+    - target: { kind: Deployment, name: radarr|bazarr }
+      patch: '[{"op": "replace", "path": "/spec/replicas", "value": 0}]'
+    - target: { kind: CronJob, name: recyclarr }
+      patch: '[{"op": "add", "path": "/spec/suspend", "value": true}]'
   postBuild:
     substituteFrom:
       - kind: ConfigMap
