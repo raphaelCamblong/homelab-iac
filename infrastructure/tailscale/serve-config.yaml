@@ -3,7 +3,8 @@
 # tailnet IPs never collide). Raw TCP passthrough: k3s API TLS and the
 # Gateway's wildcard cert + SNI routing pass through untouched.
 #   homelab:6443 → k3s API      (kubeconfig: tls-server-name required)
-#   homelab:443  → Gateway VIP  (lab.* hosts via /etc/hosts → tailnet IP)
+#   homelab:443  → Gateway VIP  (fallback only: lab.* now reach the VIP via its
+#                                /32 route in deployment.yaml, no /etc/hosts)
 apiVersion: v1
 kind: ConfigMap
 metadata:
