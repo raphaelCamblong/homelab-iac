@@ -26,11 +26,11 @@ views:
 
           - type: tile
             entity: sensor.0xa4c13832d4f27d43_power
-            name: Solaire (voie A)
+            name: Puissance solaire
             icon: mdi:solar-power
           - type: tile
             entity: sensor.0xa4c13832d4f27d43_energy_flow_a
-            name: Sens voie A
+            name: Sens circuit solaire
             icon: mdi:transmission-tower
 
       - type: grid
@@ -45,9 +45,9 @@ views:
             title: Puissance sur 24 h
             entities:
               - entity: sensor.0xa4c13832d4f27d43_power
-                name: Solaire (voie A)
+                name: Puissance solaire
 
-          # "Consommée A" only moves when a load on the solar circuit outdraws
+          # "Consommation circuit solaire" only moves when a load on the solar circuit outdraws
           # the panels (seen 15-16 and 29-30 Aug, ~2.2 kW for hours).
           - type: statistics-graph
             title: Énergie par jour (30 j)
@@ -58,9 +58,9 @@ views:
             chart_type: bar
             entities:
               - entity: sensor.0xa4c13832d4f27d43_energy_3
-                name: Produite A
+                name: Production solaire
               - entity: sensor.0xa4c13832d4f27d43_energy
-                name: Consommée A
+                name: Consommation circuit solaire
 
       - type: grid
         cards:
@@ -71,10 +71,10 @@ views:
 
           - type: tile
             entity: sensor.0xa4c13832d4f27d43_energy_3
-            name: Produite A
+            name: Production solaire
           - type: tile
             entity: sensor.0xa4c13832d4f27d43_energy
-            name: Consommée A
+            name: Consommation circuit solaire
 
       - type: grid
         cards:
@@ -92,9 +92,9 @@ views:
               - entity: sensor.0xa4c13832d4f27d43_frequency
                 name: Fréquence
               - entity: sensor.0xa4c13832d4f27d43_current
-                name: Courant A
+                name: Courant circuit solaire
               - entity: sensor.0xa4c13832d4f27d43_power_factor_a
-                name: Facteur de puissance A
+                name: Facteur de puissance solaire
 
   # Everything else Zigbee2MQTT exposes, so the sidebar has one honest place
   # for the rest of the house without inventing structure for it yet.
