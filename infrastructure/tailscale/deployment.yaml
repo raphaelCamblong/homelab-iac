@@ -38,10 +38,14 @@ spec:
               value: "true"
             # Advertise the home LAN so tailnet clients reach it via this node.
             # Routes still need one-time approval in the Tailscale admin console.
+            # The Gateway VIP /32 is what makes lab.* work from networks that
+            # also use 192.168.1.0/24: their local /24 shadows ours, but a /32
+            # is more specific and wins on any client (laptop, phone), with
+            # no /etc/hosts entries.
             # Add the cluster Service CIDR here (k3s 10.43.0.0/16, Talos
             # 10.96.0.0/12) to reach ClusterIPs over the tailnet.
             - name: TS_ROUTES
-              value: "192.168.1.0/24"
+              value: "192.168.1.0/24,${GATEWAY_VIP}/32"
             - name: TS_HOSTNAME
               value: homelab
             # Tailnet-native TCP forwards (see serve-config.yaml).

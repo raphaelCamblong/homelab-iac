@@ -47,8 +47,8 @@ Deployment (mirroring `cloudflared/`) is enough.
 
 3. **Approve the advertised route.** After the pod is up, Tailscale admin
    console → Machines → `homelab` → *Edit route settings* → enable
-   `192.168.1.0/24`. Until approved, the node is on the tailnet but routes
-   nothing.
+   `192.168.1.0/24` and the Gateway VIP `/32`. Until approved, the node is on
+   the tailnet but routes nothing.
 
 ## Adding the cluster Service CIDR
 
