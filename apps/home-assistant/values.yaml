@@ -10,9 +10,12 @@ persistence:
   storageClass: longhorn
   accessMode: ReadWriteOnce
 
-# Seeds configuration.yaml on first boot. The http block is the part that
+# Seeds configuration.yaml on first boot. trusted_proxies is the part that
 # matters: behind the Gateway, HA rejects every proxied request with
-# "400 Bad Request" unless it trusts the proxy's source range.
+# "400 Bad Request" unless it trusts the proxy's source range. Since HA 2026.8
+# the chart seeds them into /config/.storage/http (fresh installs only); on a
+# running instance they live in the UI (Settings > System > Network), so
+# editing them here changes nothing.
 # forceInit stays false so hand edits in the UI are never overwritten.
 configuration:
   enabled: true
@@ -32,7 +35,7 @@ configuration:
     prometheus:
     {{- end }}
 
-    {{- if or .Values.ingress.enabled .Values.ingress.external .Values.httpRoute.enabled }}
+    {{- if and (include "home-assistant.httpYamlSupported" .) (or .Values.ingress.enabled .Values.ingress.external .Values.httpRoute.enabled) }}
     http:
       use_x_forwarded_for: true
       trusted_proxies:

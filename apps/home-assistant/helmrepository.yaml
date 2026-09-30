@@ -6,6 +6,10 @@ kind: HelmRepository
 metadata:
   name: home-assistant
   namespace: flux-system
+# OCI, not the github.io index: that URL now 301s to a plain-http custom
+# domain, so the index (which picks the tarball URL + digest) was fetched
+# unauthenticated. ghcr.io is HTTPS end to end.
 spec:
+  type: oci
   interval: 24h
-  url: https://pajikos.github.io/home-assistant-helm-chart/
+  url: oci://ghcr.io/pajikos/charts
