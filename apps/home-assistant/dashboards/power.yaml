@@ -76,6 +76,40 @@ views:
             entity: sensor.0xa4c13832d4f27d43_energy
             name: Consommation circuit solaire
 
+      # Both entities are UI helpers living in HA storage, not in git:
+      # input_number.prix_electricite and the template sensor
+      # sensor.valeur_production_solaire (= production counter × price).
+      - type: grid
+        cards:
+          - type: heading
+            heading: Économies
+            heading_style: title
+            icon: mdi:piggy-bank
+
+          # Upper bound: every produced kWh valued at the grid price. Only the
+          # self-consumed part is a real saving (export earns nothing without a
+          # resale contract); that split needs clamp B on the main supply.
+          # ponytail: counter × *current* price, so a tariff change re-prices
+          # all past production (one spike in the daily chart). Fine at 1-2
+          # tariff changes a year; accumulate per kWh if that ever matters.
+          - type: tile
+            entity: sensor.valeur_production_solaire
+            name: Valeur produite (max)
+            icon: mdi:piggy-bank
+          - type: tile
+            entity: input_number.prix_electricite
+            name: Prix du kWh
+          - type: statistics-graph
+            title: Valeur produite par jour
+            days_to_show: 30
+            period: day
+            stat_types:
+              - change
+            chart_type: bar
+            entities:
+              - entity: sensor.valeur_production_solaire
+                name: Valeur produite
+
       - type: grid
         cards:
           - type: heading
